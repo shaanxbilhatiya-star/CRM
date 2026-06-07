@@ -252,6 +252,26 @@
   .dispo-btn.dispo-followup { background: rgba(99,102,241,.1); color: var(--accent2); border: 1.5px solid rgba(99,102,241,.3); }
   .dispo-btn.dispo-switch-off { background: rgba(245,158,11,.1); color: var(--warn); border: 1.5px solid rgba(245,158,11,.3); }
   .dispo-btn.dispo-interested { background: rgba(16,185,129,.1); color: var(--green); border: 1.5px solid rgba(16,185,129,.3); }
+  .dispo-btn.dispo-discard { background: rgba(120,53,15,.08); color: #78350f; border: 1.5px solid rgba(120,53,15,.3); }
+
+  /* ── 20-call Reminder Popup ── */
+  .reminder-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 300; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .reminder-popup-overlay.active { opacity: 1; pointer-events: all; }
+  .reminder-popup { background: var(--surface); border-radius: 16px; padding: 30px; width: 90%; max-width: 400px; box-shadow: 0 12px 50px rgba(0,0,0,.4); text-align: center; position: relative; }
+  .reminder-popup .close-btn { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--muted); }
+  .reminder-popup .close-btn:hover { color: var(--danger); }
+  .reminder-popup h3 { font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--warn); }
+  .reminder-popup p { font-size: 15px; color: var(--text); line-height: 1.6; }
+
+  /* ── Followup Due Popup ── */
+  .followup-due-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 310; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .followup-due-overlay.active { opacity: 1; pointer-events: all; }
+  .followup-due-popup { background: var(--surface); border-radius: 16px; padding: 30px; width: 90%; max-width: 420px; box-shadow: 0 12px 50px rgba(0,0,0,.4); text-align: center; }
+  .followup-due-popup h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--accent2); }
+  .followup-due-popup .due-list { text-align: left; margin: 12px 0; max-height: 200px; overflow-y: auto; }
+  .followup-due-popup .due-item { padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: var(--surface2); }
+  .followup-due-popup .due-item .phone { font-family: var(--mono); color: var(--tl); font-weight: 700; }
+  .followup-due-popup .due-item .name { font-weight: 600; margin-left: 8px; }
   .btn-row-a { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 20px; }
   #idleOverlay { text-align: center; padding: 28px 16px; }
   .idle-icon { font-size: 44px; margin-bottom: 10px; display: block; opacity: .3; }
@@ -421,6 +441,7 @@
           <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#64748b"></div><div class="dispo-stat-val" id="tlStatsNotInterested">0</div><div class="dispo-stat-lbl">Not Interested</div></div>
           <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#2563eb"></div><div class="dispo-stat-val" id="tlStatsFollowup">0</div><div class="dispo-stat-lbl">Followup</div></div>
           <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#f59e0b"></div><div class="dispo-stat-val" id="tlStatsSwitchOff">0</div><div class="dispo-stat-lbl">Switch OFF</div></div>
+          <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#78350f"></div><div class="dispo-stat-val" id="tlStatsDiscard">0</div><div class="dispo-stat-lbl">Discard/Not-Eligible</div></div>
           <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#059669"></div><div class="dispo-stat-val" id="tlStatsInterested">0</div><div class="dispo-stat-lbl">Interested</div></div>
         </div>
       </div>
@@ -486,15 +507,28 @@
 
     <!-- Followups Panel -->
     <div class="panel" style="margin-bottom:20px;border-top:3px solid var(--accent)">
-      <div class="panel-header" style="background:rgba(99,102,241,.05)">
-        <h2 style="color:var(--accent2)">&#128197; Followups</h2>
+      <div class="panel-header" style="background:rgba(99,102,241,.05);flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1">
+          <h2 style="color:var(--accent2)">&#128197; Followups</h2>
+          <select id="tlFollowupAgentFilter" onchange="fetchTLFollowups()"
+            style="padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;outline:none;min-width:160px">
+            <option value="">All Agents</option>
+          </select>
+        </div>
         <span style="font-size:12px;color:var(--muted)" id="followupsCountBadge">0 followups</span>
       </div>
       <div class="panel-body" style="padding:0">
         <table class="leads-table">
-          <thead><tr><th>Phone</th><th>Name</th><th>Agent</th><th>Date</th><th>Time</th></tr></thead>
-          <tbody id="followupsTable"><tr><td colspan="5" class="empty">No followups yet</td></tr></tbody>
+          <thead><tr><th>Phone</th><th>Name</th><th>Agent</th><th>Date</th><th>Time</th><th>Action</th></tr></thead>
+          <tbody id="followupsTable"><tr><td colspan="6" class="empty">No followups yet</td></tr></tbody>
         </table>
+      </div>
+      <!-- Upload Custom Followups -->
+      <div style="border-top:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Upload Followups:</span>
+        <input type="file" id="tlFollowupUploadFile" accept=".xlsx,.xls" style="font-size:12px">
+        <button class="btn-sm tl" onclick="tlUploadFollowups()">Upload Excel</button>
+        <a href="/api/admin/download-followup-sample" download class="btn-sm tl" style="text-decoration:none">Download Sample</a>
       </div>
     </div>
 
@@ -572,6 +606,7 @@
           <button class="dispo-btn dispo-not-interested" onclick="agentSubmitDisposition('not_interested')">&#128683; Not Interested</button>
           <button class="dispo-btn dispo-followup" onclick="agentSubmitDisposition('followup')">&#128197; Followup</button>
           <button class="dispo-btn dispo-switch-off" onclick="agentSubmitDisposition('switch_off')">&#128244; Switch OFF</button>
+          <button class="dispo-btn dispo-discard" onclick="agentSubmitDisposition('discard')">&#128683; Discard/Not-Eligible</button>
           <button class="dispo-btn dispo-interested" onclick="agentSubmitDisposition('interested')">&#11088; Interested</button>
         </div>
       </div>
@@ -605,6 +640,7 @@
             <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#64748b"></div><div class="dispo-stat-val" id="tla-notInterested">0</div><div class="dispo-stat-lbl">Not Interested</div></div>
             <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#2563eb"></div><div class="dispo-stat-val" id="tla-followup">0</div><div class="dispo-stat-lbl">Followup</div></div>
             <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#f59e0b"></div><div class="dispo-stat-val" id="tla-switchOff">0</div><div class="dispo-stat-lbl">Switch OFF</div></div>
+            <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#78350f"></div><div class="dispo-stat-val" id="tla-discard">0</div><div class="dispo-stat-lbl">Discard/Not-Eligible</div></div>
             <div class="dispo-stat-card"><div class="dispo-stat-indicator" style="background:#059669"></div><div class="dispo-stat-val" id="tla-interested">0</div><div class="dispo-stat-lbl">Interested</div></div>
           </div>
         </div>
@@ -636,8 +672,8 @@
         </div>
         <div class="panel-body" style="padding:0;overflow-x:auto">
           <table class="leads-table">
-            <thead><tr><th>Phone</th><th>Name</th><th>Date</th><th>Time</th></tr></thead>
-            <tbody id="tla-followupsTable"><tr><td colspan="4" class="empty">No followups yet</td></tr></tbody>
+            <thead><tr><th>Phone</th><th>Name</th><th>Date</th><th>Time</th><th>Action</th></tr></thead>
+            <tbody id="tla-followupsTable"><tr><td colspan="5" class="empty">No followups yet</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -692,6 +728,25 @@
   </div>
 </div>
 
+<!-- ── 20-CALL REMINDER POPUP (TL Agent Mode) ── -->
+<div class="reminder-popup-overlay" id="tlReminderPopup">
+  <div class="reminder-popup">
+    <button class="close-btn" onclick="closeTLReminderPopup()">&times;</button>
+    <h3>&#9888;&#65039; Reminder</h3>
+    <p>&#2309;&#2348; &#2340;&#2325; &#2325;&#2379;&#2312; &#2349;&#2368; &#2311;&#2306;&#2335;&#2352;&#2375;&#2360;&#2381;&#2335;&#2375;&#2337; &#2354;&#2368;&#2337; &#2320;&#2337; &#2325;&#2381;&#2351;&#2379;&#2306; &#2344;&#2361;&#2368;&#2306; &#2361;&#2369;&#2312; &#2361;&#2376;</p>
+  </div>
+</div>
+
+<!-- ── FOLLOWUP DUE POPUP (TL Agent Mode) ── -->
+<div class="followup-due-overlay" id="tlFollowupDuePopup">
+  <div class="followup-due-popup">
+    <h3>&#128197; Followup Due!</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">These followups are due now:</p>
+    <div class="due-list" id="tlFollowupDueList"></div>
+    <button class="btn-confirm-a blue" onclick="closeTLFollowupDuePopup()">OK, Got it</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <!-- Transfer Modal -->
@@ -712,7 +767,8 @@
 <div class="modal-overlay-a" id="followupModal">
   <div class="modal-box-a">
     <h3>Schedule Followup</h3>
-    <p class="modal-sub">Set a date and time to follow up</p>
+    <p class="modal-sub">Set a date, time, and name for the followup</p>
+    <div class="field"><label>Followup Name</label><input type="text" id="followupName" placeholder="e.g. Call back about loan"></div>
     <div class="field"><label>Followup Date</label><input type="date" id="followupDate"></div>
     <div class="field"><label>Followup Time</label><input type="time" id="followupTime"></div>
     <button class="btn-confirm-a blue" onclick="agentConfirmFollowup()">Confirm Followup</button>
@@ -743,6 +799,10 @@ function escapeHtml(s) {
 }
 function formatMs(ms) {
   const t = Math.max(0, Math.floor(ms/1000)), m = Math.floor(t/60), s = t%60;
+  if (m >= 60) {
+    const h = Math.floor(m/60), rm = m%60;
+    return h + 'h ' + rm + 'm';
+  }
   return m + ':' + String(s).padStart(2,'0');
 }
 function formatPhone(p) {
@@ -884,6 +944,7 @@ function setMode(tlMode) {
     fetchAgentLeaderboard();
     fetchAgentDispoStats();
     startAgentModeTimer();
+    startTLDueFollowupCheck();
   } else {
     // Switch back to TL mode — start TL mode timer, end meeting if active
     document.body.classList.remove('agent-mode-theme');
@@ -1198,19 +1259,67 @@ async function fetchTLFollowups() {
 function renderTLFollowups(fs) {
   const tb=document.getElementById('followupsTable');
   document.getElementById('followupsCountBadge').textContent=(fs||[]).length+' followup'+((fs||[]).length!==1?'s':'');
-  if(!fs||!fs.length){tb.innerHTML='<tr><td colspan="5" class="empty">No followups yet</td></tr>';return;}
-  tb.innerHTML=fs.map(f=>`<tr><td><span class="phone-number">${escapeHtml(formatPhone(f.phone))}</span></td>
-    <td>${escapeHtml(f.name)||'—'}</td><td style="font-weight:500">${escapeHtml(f.agentName||f.followupLockedBy)||'—'}</td>
-    <td style="font-family:var(--mono);font-size:13px">${escapeHtml(f.followupDate||'—')}</td>
-    <td style="font-family:var(--mono);font-size:13px">${escapeHtml(f.followupTime||'—')}</td></tr>`).join('');
+  if(!fs||!fs.length){tb.innerHTML='<tr><td colspan="6" class="empty">No followups yet</td></tr>';return;}
+  // Filter by selected agent
+  const filterAgent=document.getElementById('tlFollowupAgentFilter')?.value||'';
+  let filtered=fs;
+  if(filterAgent) filtered=fs.filter(f=>(f.followupLockedByAgentId||f.agentId||'')==filterAgent);
+  // Sort by nearest date/time
+  filtered.sort((a,b)=>{
+    const da=(a.followupDate||'')+'T'+(a.followupTime||'00:00');
+    const db=(b.followupDate||'')+'T'+(b.followupTime||'00:00');
+    return da.localeCompare(db);
+  });
+  if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="empty">No followups for this filter</td></tr>';return;}
+  tb.innerHTML=filtered.map(f=>{
+    const numberId=f.numberId||f.id||'';
+    return `<tr><td><span class="phone-number">${escapeHtml(formatPhone(f.phone))}</span></td>
+    <td>${escapeHtml(f.followupName||f.name)||'\u2014'}</td><td style="font-weight:500">${escapeHtml(f.agentName||f.followupLockedBy)||'\u2014'}</td>
+    <td style="font-family:var(--mono);font-size:13px">${escapeHtml(f.followupDate||'\u2014')}</td>
+    <td style="font-family:var(--mono);font-size:13px">${formatTimeAmPm(f.followupTime)}</td>
+    <td><button class="btn-sm danger" onclick="tlRemoveFollowup('${escapeHtml(numberId)}')">Remove</button></td></tr>`;
+  }).join('');
+}
+function formatTimeAmPm(timeStr) {
+  if (!timeStr) return '\u2014';
+  try {
+    const [h, m] = timeStr.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return hour12 + ':' + String(m).padStart(2,'0') + ' ' + period;
+  } catch(e) { return timeStr; }
+}
+async function tlRemoveFollowup(numberId) {
+  if(!confirm('Remove this followup? Lead will be moved to Not Interested.')) return;
+  try {
+    const r=await fetch('/api/admin/followup/'+encodeURIComponent(numberId),{method:'DELETE'});
+    const d=await r.json();
+    if(d.error){showToast('Error: '+d.error,'error');return;}
+    showToast('Followup removed (lead moved to NI)','success');
+    fetchTLFollowups();
+  } catch(e){showToast('Failed to remove followup','error');}
+}
+async function tlUploadFollowups() {
+  const fileInput=document.getElementById('tlFollowupUploadFile');
+  if(!fileInput.files||!fileInput.files[0]){showToast('Select an Excel file','error');return;}
+  const formData=new FormData();
+  formData.append('file',fileInput.files[0]);
+  try {
+    const r=await fetch('/api/admin/upload-followups',{method:'POST',body:formData});
+    const d=await r.json();
+    if(d.error){showToast('Error: '+d.error,'error');return;}
+    showToast('Followups uploaded: '+(d.added||0)+' added','success');
+    fileInput.value='';
+    fetchTLFollowups();
+  } catch(e){showToast('Upload failed','error');}
 }
 
 // ── TL: Disposition Stats ─────────────────────────────────────────────────────
 let tlStatsPeriod='daily', tlStatsAgentId='';
 function switchTLStatsPeriod(p) {
   tlStatsPeriod=p;
-  document.querySelectorAll('.admin-stats-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelector('.admin-stats-tab[data-period="'+p+'"]').classList.add('active');
+  document.querySelectorAll('#tlScreen .admin-stats-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('#tlScreen .admin-stats-tab[data-period="'+p+'"]').classList.add('active');
   fetchTLDispoStats();
 }
 function onTLAgentFilterChange() {
@@ -1227,6 +1336,7 @@ async function fetchTLDispoStats() {
     document.getElementById('tlStatsNotInterested').textContent=d.not_interested||0;
     document.getElementById('tlStatsFollowup').textContent=d.followup||0;
     document.getElementById('tlStatsSwitchOff').textContent=d.switch_off||0;
+    document.getElementById('tlStatsDiscard').textContent=d.discard||0;
     document.getElementById('tlStatsInterested').textContent=d.interested||0;
   } catch(e){}
 }
@@ -1234,10 +1344,23 @@ async function populateTLAgentFilter() {
   try {
     const r=await fetch('/api/admin/agents-list'); const agents=await r.json();
     const sel=document.getElementById('tlStatsAgentFilter');
+    const savedVal = sel.value;
     while(sel.options.length>1) sel.remove(1);
     agents.sort((a,b)=>a.name.localeCompare(b.name)).forEach(ag=>{
-      const o=document.createElement('option'); o.value=ag.id; o.textContent='👤 '+ag.name; sel.appendChild(o);
+      const o=document.createElement('option'); o.value=ag.id; o.textContent=ag.name; sel.appendChild(o);
     });
+    if (savedVal) sel.value = savedVal;
+    tlStatsAgentId = sel.value;
+    // Also populate followup agent filter
+    const fSel=document.getElementById('tlFollowupAgentFilter');
+    if(fSel) {
+      const fSavedVal = fSel.value;
+      while(fSel.options.length>1) fSel.remove(1);
+      agents.sort((a,b)=>a.name.localeCompare(b.name)).forEach(ag=>{
+        const o=document.createElement('option'); o.value=ag.id; o.textContent=ag.name; fSel.appendChild(o);
+      });
+      if (fSavedVal) fSel.value = fSavedVal;
+    }
   } catch(e){}
 }
 
@@ -1262,15 +1385,20 @@ function getSmartRemarks(r, data, idx) {
   return '\u{1F4C8} ' + above.name.split(' ')[0] + ' \u0938\u0947 ' + gap + ' pts \u092A\u0940\u091B\u0947 \u2014 ' + intNeeded + ' interested lead' + (intNeeded > 1 ? 's' : '') + ' \u0932\u093E\u0913 \u0914\u0930 overtake \u0915\u0930\u094B!';
 }
 async function fetchTLLeaderboard() {
-  try { const r=await fetch('/api/rankings?period='+tlLbPeriod); renderTLLeaderboard(await r.json()); } catch(e){}
+  try { const r=await fetch('/api/rankings?period='+tlLbPeriod); const resp=await r.json(); const data=resp.rankings||resp; const formulaDesc=resp.formulaDescription||''; renderTLLeaderboard(data, formulaDesc); } catch(e){}
 }
-function renderTLLeaderboard(data) {
+function renderTLLeaderboard(data, formulaDesc) {
   const body=document.getElementById('tlLeaderboardBody');
   if(!data||!data.length){body.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">No data yet</div>';return;}
+  let html='';
+  if (formulaDesc) {
+    html+='<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.6">';
+    html+='<strong style="color:var(--tl)">&#128202; Scoring Formula:</strong> '+escapeHtml(formulaDesc)+'</div>';
+  }
   const maxS=Math.max(...data.map(d=>d.score),1);
-  let html='<div class="lb-list">';
+  html+='<div class="lb-list">';
   data.forEach((r,idx)=>{
-    const pct=Math.round((r.score/maxS)*100);
+    const pct=maxS>0?Math.round((r.score/maxS)*100):0;
     const avatarSize=idx===0?76:idx===1?66:idx===2?58:idx<5?50:42;
     const fontSize=idx===0?24:idx===1?21:idx===2?18:idx<5?16:13;
     const face=r.profilePhoto?`<img src="${r.profilePhoto}" alt="">`:getInit(r.name);
@@ -1287,11 +1415,11 @@ function renderTLLeaderboard(data) {
       <div class="lb-row-avatar${idx===0?' rank-1-avatar':''}" style="width:${avatarSize}px;height:${avatarSize}px;font-size:${fontSize}px">${face}</div>
       <div class="lb-row-info">
         <div class="lb-row-name">${escapeHtml(r.name)}</div>
-        <div class="lb-row-stats">⭐ ${r.interested} interested · 📅 ${r.followups} followups · 📞 ${r.totalCalls} calls</div>
+        <div class="lb-row-stats">\u2B50 ${r.interested} interested \u00B7 \u{1F4C5} ${r.followups} followups \u00B7 \u{1F4DE} ${r.totalCalls} calls</div>
         <div class="lb-bar-wrap"><div class="lb-bar" style="width:${pct}%"></div></div>
         ${remarks?'<div class="lb-row-remarks">'+remarks+'</div>':''}
       </div>
-      <div style="text-align:right;min-width:50px"><div class="lb-row-score">${r.score}</div></div>
+      <div style="text-align:right;min-width:50px"><div class="lb-row-score">${r.score}/100</div></div>
     </div>`;
   });
   html+='</div>';
@@ -1353,14 +1481,16 @@ function showFollowupModal(){
   document.getElementById('followupDate').value=today;
   document.getElementById('followupDate').setAttribute('min',today);
   document.getElementById('followupTime').value='';
+  document.getElementById('followupName').value='';
   document.getElementById('followupModal').classList.add('active');
 }
 function agentConfirmFollowup(){
   const fd=document.getElementById('followupDate').value, ft=document.getElementById('followupTime').value;
+  const fn=document.getElementById('followupName').value.trim();
   if(!fd){alert('Select a date');return;} if(!ft){alert('Select a time');return;}
   document.getElementById('followupModal').classList.remove('active');
   document.getElementById('agentDispositionPanel').style.display='none';
-  socket.emit('agent-disposition',{agentId:tlAgentId,numberId:agentCurrentNumberId,disposition:'followup',followupDate:fd,followupTime:ft});
+  socket.emit('agent-disposition',{agentId:tlAgentId,numberId:agentCurrentNumberId,disposition:'followup',followupDate:fd,followupTime:ft,followupName:fn});
   agentCurrentNumberId=null;
 }
 
@@ -1420,15 +1550,20 @@ function switchAgentLbPeriod(p) {
 }
 async function fetchAgentLeaderboard() {
   if(inTLMode) return;
-  try { const r=await fetch('/api/rankings?period='+agentLbPeriod); renderAgentLeaderboard(await r.json()); } catch(e){}
+  try { const r=await fetch('/api/rankings?period='+agentLbPeriod); const resp=await r.json(); const data=resp.rankings||resp; const formulaDesc=resp.formulaDescription||''; renderAgentLeaderboard(data, formulaDesc); } catch(e){}
 }
-function renderAgentLeaderboard(data) {
+function renderAgentLeaderboard(data, formulaDesc) {
   const body=document.getElementById('tla-leaderboardBody');
   if(!data||!data.length){body.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">No data yet</div>';return;}
+  let html='';
+  if (formulaDesc) {
+    html+='<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.6">';
+    html+='<strong style="color:var(--tl)">&#128202; Scoring Formula:</strong> '+escapeHtml(formulaDesc)+'</div>';
+  }
   const maxS=Math.max(...data.map(d=>d.score),1);
-  let html='<div class="lb-list">';
+  html+='<div class="lb-list">';
   data.forEach((r,idx)=>{
-    const pct=Math.round((r.score/maxS)*100);
+    const pct=maxS>0?Math.round((r.score/maxS)*100):0;
     const avatarSize=idx===0?76:idx===1?66:idx===2?58:idx<5?50:42;
     const fontSize=idx===0?24:idx===1?21:idx===2?18:idx<5?16:13;
     const face=r.profilePhoto?`<img src="${r.profilePhoto}" alt="">`:getInit(r.name);
@@ -1449,7 +1584,7 @@ function renderAgentLeaderboard(data) {
         <div class="lb-bar-wrap"><div class="lb-bar" style="width:${pct}%"></div></div>
         ${remarks?'<div class="lb-row-remarks">'+remarks+'</div>':''}
       </div>
-      <div style="text-align:right;min-width:50px"><div class="lb-row-score">${r.score}</div></div>
+      <div style="text-align:right;min-width:50px"><div class="lb-row-score">${r.score}/100</div></div>
     </div>`;
   });
   html+='</div>';
@@ -1475,6 +1610,7 @@ async function fetchAgentDispoStats() {
     document.getElementById('tla-notInterested').textContent=d.not_interested||0;
     document.getElementById('tla-followup').textContent=d.followup||0;
     document.getElementById('tla-switchOff').textContent=d.switch_off||0;
+    document.getElementById('tla-discard').textContent=d.discard||0;
     document.getElementById('tla-interested').textContent=d.interested||0;
   } catch(e){}
 }
@@ -1524,12 +1660,22 @@ async function fetchAgentFollowups() {
     document.getElementById('tla-followupsCount').textContent=fs.length+' followup'+(fs.length!==1?'s':'');
     document.getElementById('agentFollowupsCount').textContent=fs.length;
     const tb=document.getElementById('tla-followupsTable');
-    if(!fs||!fs.length){tb.innerHTML='<tr><td colspan="4" class="empty">No followups yet</td></tr>';return;}
-    tb.innerHTML=fs.map(f=>`<tr>
+    if(!fs||!fs.length){tb.innerHTML='<tr><td colspan="5" class="empty">No followups yet</td></tr>';return;}
+    // Sort by nearest date/time
+    fs.sort((a,b)=>{
+      const da=(a.followupDate||'')+'T'+(a.followupTime||'00:00');
+      const db=(b.followupDate||'')+'T'+(b.followupTime||'00:00');
+      return da.localeCompare(db);
+    });
+    tb.innerHTML=fs.map(f=>{
+      const numberId=f.numberId||f.id||'';
+      return `<tr>
       <td><span class="phone-number">${escapeHtml(formatPhone(f.phone))}</span></td>
-      <td>${escapeHtml(f.name)||'\u2014'}</td>
+      <td>${escapeHtml(f.followupName||f.name)||'\u2014'}</td>
       <td style="font-family:var(--mono);font-size:13px">${escapeHtml(f.followupDate||'\u2014')}</td>
-      <td style="font-family:var(--mono);font-size:13px">${escapeHtml(f.followupTime||'\u2014')}</td></tr>`).join('');
+      <td style="font-family:var(--mono);font-size:13px">${formatTimeAmPm(f.followupTime)}</td>
+      <td><button class="btn-sm danger" onclick="tlaRemoveFollowup('${escapeHtml(numberId)}')">Remove</button></td></tr>`;
+    }).join('');
   } catch(e){}
 }
 
@@ -1570,7 +1716,115 @@ async function tlaAddInterestedManually() {
   } catch(e){showToast('Failed to add lead','error');}
 }
 
-// ── Agent Mode: Remove Interested ────────────────────────────────────────────
+// ── Agent Mode: Remove Followup ───────────────────────────────────────────────
+async function tlaRemoveFollowup(numberId) {
+  if(!confirm('Remove this followup? Lead will move to Not Interested.')) return;
+  try {
+    const r=await fetch('/api/agent/followup/'+encodeURIComponent(numberId),{method:'DELETE'});
+    const d=await r.json();
+    if(d.error){showToast('Error: '+d.error,'error');return;}
+    showToast('Followup removed','success');
+    fetchAgentFollowups();
+  } catch(e){showToast('Failed to remove','error');}
+}
+
+// ── 20-Call Interested Reminder (TL Agent Mode) ──────────────────────────────
+let tlCallsSinceReminder = 0;
+function checkTLInterestedReminder() {
+  tlCallsSinceReminder++;
+  if (tlCallsSinceReminder >= 20) {
+    const intCount = parseInt(document.getElementById('agentInterestedCount').textContent) || 0;
+    if (intCount === 0) {
+      document.getElementById('tlReminderPopup').classList.add('active');
+    }
+    tlCallsSinceReminder = 0;
+  }
+}
+function closeTLReminderPopup() {
+  document.getElementById('tlReminderPopup').classList.remove('active');
+}
+
+// Hook into disposition to track calls for the reminder
+const _origAgentSubmitDisposition = agentSubmitDisposition;
+agentSubmitDisposition = function(d) {
+  // Count ALL dispositions for the 20-call reminder
+  checkTLInterestedReminder();
+  _origAgentSubmitDisposition(d);
+};
+
+// ── Followup Due Popup (TL Agent Mode) ───────────────────────────────────────
+let tlDueFollowupInterval = null;
+function startTLDueFollowupCheck() {
+  if (tlDueFollowupInterval) clearInterval(tlDueFollowupInterval);
+  tlDueFollowupInterval = setInterval(checkTLDueFollowups, 30000);
+  checkTLDueFollowups();
+}
+async function checkTLDueFollowups() {
+  if (inTLMode || !tlAgentId) return;
+  try {
+    const r = await fetch('/api/agent/due-followups/' + encodeURIComponent(tlAgentId));
+    const due = await r.json();
+    if (due && due.length > 0) {
+      const list = document.getElementById('tlFollowupDueList');
+      list.innerHTML = due.map(f => `<div class="due-item"><span class="phone">${escapeHtml(formatPhone(f.phone))}</span><span class="name">${escapeHtml(f.followupName || f.name || '')}</span></div>`).join('');
+      document.getElementById('tlFollowupDuePopup').classList.add('active');
+    }
+  } catch(e) {}
+}
+function closeTLFollowupDuePopup() {
+  document.getElementById('tlFollowupDuePopup').classList.remove('active');
+}
+
+// ── Timer Update Handler ─────────────────────────────────────────────────────
+socket.on('timer-update', function(d) {
+  // When admin ends a timer for an agent, sync if it's us
+  if (d && d.agentId === tlAgentId) {
+    if (d.type === 'break-ended') {
+      onBreak = false; breakStartedAt = null;
+      totalBreakMsUsed = d.totalBreakMs || totalBreakMsUsed;
+      breakExhausted = totalBreakMsUsed >= breakAllowedMs;
+      agentStopBreakCountdown(); agentHideBreakMode();
+      if (agentCurrentNumberId) {
+        document.getElementById('agentNumberDisplay').style.display = 'block';
+        document.getElementById('agentDispositionPanel').style.display = 'block';
+        if (!breakExhausted) { document.getElementById('agentBtnBreak').style.display = 'block'; }
+        document.getElementById('agentBtnWashroom').style.display = 'block';
+        document.getElementById('agentBtnMeeting').style.display = 'block';
+      } else agentShowIdle();
+    }
+    if (d.type === 'washroom-ended') {
+      onWashroom = false; washroomStartedAt = null;
+      totalWashroomMsUsed = d.totalWashroomMs || totalWashroomMsUsed;
+      if (washroomInterval) { clearInterval(washroomInterval); washroomInterval = null; }
+      document.getElementById('agentWashroomUsed').textContent = formatMs(totalWashroomMsUsed);
+      document.getElementById('agentBtnEndWashroom').style.display = 'none';
+      const wc = document.getElementById('agentWashroomCard'); if (wc) wc.remove();
+      if (agentCurrentNumberId) {
+        document.getElementById('agentNumberDisplay').style.display = 'block';
+        document.getElementById('agentDispositionPanel').style.display = 'block';
+        if (!breakExhausted) { document.getElementById('agentBtnBreak').style.display = 'block'; }
+        document.getElementById('agentBtnWashroom').style.display = 'block';
+        document.getElementById('agentBtnMeeting').style.display = 'block';
+      } else agentShowIdle();
+    }
+    if (d.type === 'meeting-ended') {
+      onMeeting = false; meetingStartedAt = null;
+      totalMeetingMsUsed = d.totalMeetingMs || totalMeetingMsUsed;
+      if (meetingInterval) { clearInterval(meetingInterval); meetingInterval = null; }
+      document.getElementById('agentMeetingUsed').textContent = formatMs(totalMeetingMsUsed);
+      document.getElementById('agentBtnEndMeeting').style.display = 'none';
+      if (agentCurrentNumberId) {
+        document.getElementById('agentNumberDisplay').style.display = 'block';
+        document.getElementById('agentDispositionPanel').style.display = 'block';
+        if (!breakExhausted) { document.getElementById('agentBtnBreak').style.display = 'block'; }
+        document.getElementById('agentBtnWashroom').style.display = 'block';
+        document.getElementById('agentBtnMeeting').style.display = 'block';
+      } else agentShowIdle();
+    }
+  }
+  // Refresh TL stats if in TL mode
+  if (inTLMode) fetchTLData();
+});
 async function tlaRemoveInterested(numberId) {
   if(!confirm('Remove this lead?')) return;
   try {
