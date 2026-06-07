@@ -108,7 +108,7 @@ function checkDailyReset(state) {
       state.agents[id].totalTlModeMs = 0;
     }
     state.numbers.forEach(n => {
-      if ((n.disposition === 'not_received' || n.disposition === 'switch_off') && n.retryAfter && today >= n.retryAfter) {
+      if ((n.disposition === 'not_received' || n.disposition === 'switch_off' || n.disposition === 'dead') && n.retryAfter && today >= n.retryAfter && !n.permanent && (n.retryCount || 0) < 2) {
         n.disposition = null;
         n.retryAfter = null;
         n.dialedBy = null;
@@ -156,10 +156,15 @@ function getNextNumber(agentId) {
   const today = getTodayStr();
   const undialed = appState.numbers.find(n => {
     if (n.dialedBy || n.assignedTo) return false;
-    if (n.disposition === 'dead') return false;
-    if (n.disposition === 'not_interested' && n.blockedUntil && new Date(n.blockedUntil) > now) return false;
+    if (n.disposition === 'discard') return false;
+    if (n.disposition === 'not_interested') return false;
+    if (n.permanent) return false;
+    if (n.disposition === 'dead' && n.retryCount >= 2) return false;
+    if (n.disposition === 'dead' && !n.retryAfter) return false;
+    if (n.disposition === 'dead' && n.retryAfter && today < n.retryAfter) return false;
     if (n.disposition === 'followup' && n.followupLockedBy && n.followupLockedBy !== agentId) return false;
     if (n.disposition === 'interested') return false;
+    if ((n.disposition === 'not_received' || n.disposition === 'switch_off') && n.retryCount >= 2) return false;
     if ((n.disposition === 'not_received' || n.disposition === 'switch_off') && n.retryAfter && today < n.retryAfter) return false;
     return true;
   });
@@ -201,7 +206,7 @@ function releaseNumber(agentId, numberId) {
 }
 
 // ─── Disposition System ───────────────────────────────────────────────────────
-const VALID_DISPOSITIONS = ['dead', 'not_received', 'not_interested', 'followup', 'switch_off', 'interested'];
+const VALID_DISPOSITIONS = ['dead', 'not_received', 'not_interested', 'followup', 'switch_off', 'interested', 'discard'];
 const VALID_LOAN_TYPES = ['BL_Business', 'LAP_Business', 'LAP_Salaried', 'PL_Business', 'PL_Salaried'];
 
 function applyDisposition(agentId, numberId, disposition, extra) {
@@ -213,40 +218,88 @@ function applyDisposition(agentId, numberId, disposition, extra) {
 
   switch (disposition) {
     case 'dead':
-      num.disposition = 'dead';
+      // CNC - retry counting: first time retryAfter tomorrow, second time permanent
+      if (!num.retryCount) num.retryCount = 0;
+      num.retryCount++;
+      if (num.retryCount >= 2) {
+        // Permanent removal - never dial again
+        num.disposition = 'dead';
+        num.permanent = true;
+        num.retryAfter = null;
+      } else {
+        num.disposition = 'dead';
+        num.retryAfter = getTomorrowStr();
+      }
       num.dialedBy = agentId;
       num.dialedAt = now;
       num.assignedTo = null;
       break;
     case 'not_received':
-      num.disposition = 'not_received';
+      // CNR - retry counting: first time retryAfter tomorrow, second time permanent
+      if (!num.retryCount) num.retryCount = 0;
+      num.retryCount++;
+      if (num.retryCount >= 2) {
+        // Permanent removal - never dial again
+        num.disposition = 'not_received';
+        num.permanent = true;
+        num.retryAfter = null;
+      } else {
+        num.disposition = 'not_received';
+        num.retryAfter = getTomorrowStr();
+      }
       num.dialedBy = agentId;
       num.dialedAt = now;
       num.assignedTo = null;
-      num.retryAfter = getTomorrowStr();
       break;
     case 'not_interested':
+      // Permanent removal - never dial again (no 30-day window)
       num.disposition = 'not_interested';
-      num.blockedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      num.permanent = true;
+      num.blockedUntil = null;
       num.dialedBy = agentId;
       num.dialedAt = now;
       num.assignedTo = null;
       break;
     case 'followup':
-      num.disposition = 'followup';
-      num.followupDate = extra && extra.followupDate ? extra.followupDate : null;
-      num.followupTime = extra && extra.followupTime ? extra.followupTime : null;
-      num.followupLockedBy = agentId;
+      // Track followup count - auto-NI after 2 followups
+      if (!num.followupCount) num.followupCount = 0;
+      num.followupCount++;
+      if (num.followupCount > 2) {
+        // Auto-convert to not_interested after 2 followups
+        num.disposition = 'not_interested';
+        num.permanent = true;
+        num.blockedUntil = null;
+        num.followupDate = null;
+        num.followupTime = null;
+        num.followupLockedBy = null;
+        num.followupName = null;
+      } else {
+        num.disposition = 'followup';
+        num.followupDate = extra && extra.followupDate ? extra.followupDate : null;
+        num.followupTime = extra && extra.followupTime ? extra.followupTime : null;
+        num.followupName = extra && extra.followupName ? extra.followupName : '';
+        num.followupLockedBy = agentId;
+      }
       num.dialedBy = agentId;
       num.dialedAt = now;
       num.assignedTo = null;
       break;
     case 'switch_off':
-      num.disposition = 'switch_off';
+      // Switch Off - retry counting: first time retryAfter tomorrow, second time permanent
+      if (!num.retryCount) num.retryCount = 0;
+      num.retryCount++;
+      if (num.retryCount >= 2) {
+        // Permanent removal - never dial again
+        num.disposition = 'switch_off';
+        num.permanent = true;
+        num.retryAfter = null;
+      } else {
+        num.disposition = 'switch_off';
+        num.retryAfter = getTomorrowStr();
+      }
       num.dialedBy = agentId;
       num.dialedAt = now;
       num.assignedTo = null;
-      num.retryAfter = getTomorrowStr();
       break;
     case 'interested':
       num.disposition = 'interested';
@@ -262,6 +315,16 @@ function applyDisposition(agentId, numberId, disposition, extra) {
       num.documentationCompletedAt = null;
       num.docZipPath = null;
       num.docZipName = null;
+      num.dialedBy = agentId;
+      num.dialedAt = now;
+      num.assignedTo = null;
+      break;
+    case 'discard':
+      // Permanent removal - never ever dial again, dead forever
+      num.disposition = 'discard';
+      num.permanent = true;
+      num.retryAfter = null;
+      num.blockedUntil = null;
       num.dialedBy = agentId;
       num.dialedAt = now;
       num.assignedTo = null;
@@ -458,7 +521,9 @@ function getAdminStats() {
     today: getTodayStr(),
     interestedCount: appState.numbers.filter(n => n.disposition === 'interested').length,
     followupCount: appState.numbers.filter(n => n.disposition === 'followup').length,
-    comingBackTomorrow: appState.numbers.filter(n => (n.disposition === 'not_received' || n.disposition === 'switch_off') && n.retryAfter && getTodayStr() < n.retryAfter).length,
+    discardCount: appState.numbers.filter(n => n.disposition === 'discard').length,
+    notInterestedCount: appState.numbers.filter(n => n.disposition === 'not_interested').length,
+    comingBackTomorrow: appState.numbers.filter(n => (n.disposition === 'not_received' || n.disposition === 'switch_off' || n.disposition === 'dead') && n.retryAfter && !n.permanent && (n.retryCount || 0) < 2 && getTodayStr() < n.retryAfter).length,
     overdueInterestedCount: appState.numbers.filter(n => n.disposition === 'interested' && !n.documentationComplete && (Date.now() - new Date(n.interestedAt).getTime()) >= DOC_DEADLINE_MS).length
   };
 }
@@ -601,14 +666,14 @@ app.get('/api/admin/stats', (req, res) => res.json(getAdminStats()));
 
 // ─── Disposition API Endpoints ────────────────────────────────────────────────
 app.post('/api/agent/disposition', (req, res) => {
-  const { agentId, numberId, disposition, followupDate, followupTime, leadName, loanType, remarks, loanAmount, employmentType, city } = req.body;
+  const { agentId, numberId, disposition, followupDate, followupTime, followupName, leadName, loanType, remarks, loanAmount, employmentType, city } = req.body;
   if (!agentId || !numberId || !disposition) {
     return res.status(400).json({ error: 'agentId, numberId, and disposition are required' });
   }
   if (!VALID_DISPOSITIONS.includes(disposition)) {
     return res.status(400).json({ error: 'Invalid disposition. Must be one of: ' + VALID_DISPOSITIONS.join(', ') });
   }
-  applyDisposition(agentId, numberId, disposition, { followupDate, followupTime, leadName, loanType, remarks, loanAmount, employmentType, city });
+  applyDisposition(agentId, numberId, disposition, { followupDate, followupTime, followupName, leadName, loanType, remarks, loanAmount, employmentType, city });
   const nextNum = getNextNumber(agentId);
   const agent = appState.agents[agentId];
   if (nextNum && agent) {
@@ -651,9 +716,18 @@ app.get('/api/admin/followups', (req, res) => {
     return {
       id: n.id, phone: n.phone, name: n.name || '',
       followupLockedBy: agent ? agent.name : n.followupLockedBy,
+      followupLockedByAgentId: n.followupLockedBy,
       followupDate: n.followupDate,
-      followupTime: n.followupTime
+      followupTime: n.followupTime,
+      followupName: n.followupName || '',
+      followupCount: n.followupCount || 0
     };
+  });
+  // Sort by nearest date and time
+  followups.sort((a, b) => {
+    const dateA = (a.followupDate || '9999-12-31') + ' ' + (a.followupTime || '23:59');
+    const dateB = (b.followupDate || '9999-12-31') + ' ' + (b.followupTime || '23:59');
+    return dateA.localeCompare(dateB);
   });
   res.json(followups);
 });
@@ -686,8 +760,16 @@ app.get('/api/agent/followups/:agentId', (req, res) => {
   const followups = appState.numbers.filter(n => n.disposition === 'followup' && n.followupLockedBy === agentId).map(n => ({
     id: n.id, phone: n.phone, name: n.name || '',
     followupDate: n.followupDate,
-    followupTime: n.followupTime
+    followupTime: n.followupTime,
+    followupName: n.followupName || '',
+    followupCount: n.followupCount || 0
   }));
+  // Sort by nearest date and time
+  followups.sort((a, b) => {
+    const dateA = (a.followupDate || '9999-12-31') + ' ' + (a.followupTime || '23:59');
+    const dateB = (b.followupDate || '9999-12-31') + ' ' + (b.followupTime || '23:59');
+    return dateA.localeCompare(dateB);
+  });
   res.json(followups);
 });
 
@@ -1214,13 +1296,13 @@ io.on('connection', (socket) => {
     broadcastAdminStats();
   });
 
-  socket.on('agent-disposition', ({ agentId, numberId, disposition, followupDate, followupTime, leadName, loanType, remarks, loanAmount, employmentType, city }) => {
+  socket.on('agent-disposition', ({ agentId, numberId, disposition, followupDate, followupTime, followupName, leadName, loanType, remarks, loanAmount, employmentType, city }) => {
     appState = checkDailyReset(appState);
     const agent = appState.agents[agentId];
     if (!agent) return socket.emit('error', 'Agent not found');
     if (!VALID_DISPOSITIONS.includes(disposition)) return socket.emit('error', 'Invalid disposition');
 
-    applyDisposition(agentId, numberId, disposition, { followupDate, followupTime, leadName, loanType, remarks, loanAmount, employmentType, city });
+    applyDisposition(agentId, numberId, disposition, { followupDate, followupTime, followupName, leadName, loanType, remarks, loanAmount, employmentType, city });
 
     const num = getNextNumber(agentId);
     if (!num) {
@@ -1240,14 +1322,14 @@ io.on('connection', (socket) => {
     broadcastAdminStats();
   });
 
-  socket.on('agent-break-start',    ({ agentId }) => { const r = startBreak(agentId);    socket.emit('break-started', r);    broadcastAdminStats(); });
-  socket.on('agent-break-end',      ({ agentId }) => { const r = endBreak(agentId);      socket.emit('break-ended', r);      broadcastAdminStats(); });
-  socket.on('agent-washroom-start', ({ agentId }) => { const r = startWashroom(agentId); socket.emit('washroom-started', r); broadcastAdminStats(); });
-  socket.on('agent-washroom-end',   ({ agentId }) => { const r = endWashroom(agentId);   socket.emit('washroom-ended', r);   broadcastAdminStats(); });
-  socket.on('agent-meeting-start',  ({ agentId }) => { const r = startMeeting(agentId);  socket.emit('meeting-started', r);  broadcastAdminStats(); });
-  socket.on('agent-meeting-end',    ({ agentId }) => { const r = endMeeting(agentId);    socket.emit('meeting-ended', r);    broadcastAdminStats(); });
-  socket.on('agent-tlmode-start',   ({ agentId }) => { const r = startTlMode(agentId);   socket.emit('tlmode-started', r);   broadcastAdminStats(); });
-  socket.on('agent-tlmode-end',     ({ agentId }) => { const r = endTlMode(agentId);     socket.emit('tlmode-ended', r);     broadcastAdminStats(); });
+  socket.on('agent-break-start',    ({ agentId }) => { const r = startBreak(agentId);    socket.emit('break-started', r);    io.emit('timer-update', { agentId, type: 'break', action: 'start', ...r }); broadcastAdminStats(); });
+  socket.on('agent-break-end',      ({ agentId }) => { const r = endBreak(agentId);      socket.emit('break-ended', r);      io.emit('timer-update', { agentId, type: 'break', action: 'end', ...r }); broadcastAdminStats(); });
+  socket.on('agent-washroom-start', ({ agentId }) => { const r = startWashroom(agentId); socket.emit('washroom-started', r); io.emit('timer-update', { agentId, type: 'washroom', action: 'start', ...r }); broadcastAdminStats(); });
+  socket.on('agent-washroom-end',   ({ agentId }) => { const r = endWashroom(agentId);   socket.emit('washroom-ended', r);   io.emit('timer-update', { agentId, type: 'washroom', action: 'end', ...r }); broadcastAdminStats(); });
+  socket.on('agent-meeting-start',  ({ agentId }) => { const r = startMeeting(agentId);  socket.emit('meeting-started', r);  io.emit('timer-update', { agentId, type: 'meeting', action: 'start', ...r }); broadcastAdminStats(); });
+  socket.on('agent-meeting-end',    ({ agentId }) => { const r = endMeeting(agentId);    socket.emit('meeting-ended', r);    io.emit('timer-update', { agentId, type: 'meeting', action: 'end', ...r }); broadcastAdminStats(); });
+  socket.on('agent-tlmode-start',   ({ agentId }) => { const r = startTlMode(agentId);   socket.emit('tlmode-started', r);   io.emit('timer-update', { agentId, type: 'tlmode', action: 'start', ...r }); broadcastAdminStats(); });
+  socket.on('agent-tlmode-end',     ({ agentId }) => { const r = endTlMode(agentId);     socket.emit('tlmode-ended', r);     io.emit('timer-update', { agentId, type: 'tlmode', action: 'end', ...r }); broadcastAdminStats(); });
 
   socket.on('ping-alive', ({ agentId }) => {
     const agent = appState.agents[agentId];
@@ -1294,7 +1376,7 @@ app.get('/api/stats/dispositions', (req, res) => {
   const stats = {
     period,
     totalCalls: filteredLogs.length,
-    dead: 0, not_received: 0, not_interested: 0, followup: 0, switch_off: 0, interested: 0
+    dead: 0, not_received: 0, not_interested: 0, followup: 0, switch_off: 0, interested: 0, discard: 0
   };
 
   filteredLogs.forEach(entry => {
@@ -1483,14 +1565,14 @@ app.get('/api/rankings', (req, res) => {
 
   // Initialize from known agents
   for (const [id, a] of Object.entries(appState.agents)) {
-    agentScores[id] = { agentId: id, name: a.name, interested: 0, followups: 0, totalCalls: 0, notInterested: 0 };
+    agentScores[id] = { agentId: id, name: a.name, interested: 0, followups: 0, totalCalls: 0, notInterested: 0, discard: 0, dead: 0, switchOff: 0 };
   }
 
   // Also ensure agents from allowedEids appear
   for (const [eid, val] of Object.entries(appState.allowedEids)) {
     const agId = 'emp_' + eid;
     if (!agentScores[agId]) {
-      agentScores[agId] = { agentId: agId, name: getEidName(val), interested: 0, followups: 0, totalCalls: 0, notInterested: 0 };
+      agentScores[agId] = { agentId: agId, name: getEidName(val), interested: 0, followups: 0, totalCalls: 0, notInterested: 0, discard: 0, dead: 0, switchOff: 0 };
     }
   }
 
@@ -1502,18 +1584,26 @@ app.get('/api/rankings', (req, res) => {
 
     const aid = entry.agentId;
     if (!agentScores[aid]) {
-      agentScores[aid] = { agentId: aid, name: entry.agentName || aid, interested: 0, followups: 0, totalCalls: 0, notInterested: 0 };
+      agentScores[aid] = { agentId: aid, name: entry.agentName || aid, interested: 0, followups: 0, totalCalls: 0, notInterested: 0, discard: 0, dead: 0, switchOff: 0 };
     }
 
     agentScores[aid].totalCalls++;
     if (entry.disposition === 'interested') agentScores[aid].interested++;
     else if (entry.disposition === 'followup') agentScores[aid].followups++;
     else if (entry.disposition === 'not_interested') agentScores[aid].notInterested++;
+    else if (entry.disposition === 'discard') agentScores[aid].discard++;
+    else if (entry.disposition === 'dead') agentScores[aid].dead++;
+    else if (entry.disposition === 'switch_off') agentScores[aid].switchOff++;
   });
 
-  // Compute scores and sort
+  // New formula: MAX(0, MIN(100, (((100*Interested) + (25*FollowUp) - (10*NotInterested) - (15*Discard) - (2*CNC) - (2*SwitchOff)) / (TotalCalls*100)) * 100))
   const rankings = Object.values(agentScores).map(a => {
-    const score = (a.interested + a.followups + a.totalCalls) - a.notInterested;
+    let score = 0;
+    if (a.totalCalls > 0) {
+      const rawScore = ((100 * a.interested) + (25 * a.followups) - (10 * a.notInterested) - (15 * a.discard) - (2 * a.dead) - (2 * a.switchOff)) / (a.totalCalls * 100) * 100;
+      score = Math.max(0, Math.min(100, rawScore));
+    }
+    score = Math.round(score * 100) / 100;
     // Get profile photo
     const eidMatch = a.agentId.match(/^emp_(\d+)$/);
     let profilePhoto = null;
@@ -1527,21 +1617,261 @@ app.get('/api/rankings', (req, res) => {
     return { ...a, score, profilePhoto };
   });
 
-  rankings.sort((a, b) => b.score - a.score);
+  rankings.sort((a, b) => b.score - a.score || b.interested - a.interested);
 
   // Add rank and remarks
   rankings.forEach((r, i) => {
     r.rank = i + 1;
     if (i === 0 && r.score > 0) {
-      r.remarks = `Top performer! Leading with ${r.interested} interested leads and ${r.followups} followups`;
-    } else if (r.score < 0) {
-      r.remarks = 'Focus on quality calls - reduce not-interested outcomes';
+      r.remarks = `Top performer! Score: ${r.score}/100 with ${r.interested} interested leads and ${r.followups} followups`;
+    } else if (r.score === 0 && r.totalCalls === 0) {
+      r.remarks = 'No calls made yet in this period';
+    } else if (r.score < 20) {
+      r.remarks = 'Focus on quality calls - increase interested and followup conversions';
     } else {
-      r.remarks = `${r.interested} interested, ${r.followups} followups. Increase interested conversions to move up`;
+      r.remarks = `Score: ${r.score}/100. ${r.interested} interested, ${r.followups} followups. Keep improving!`;
     }
   });
 
-  res.json(rankings);
+  const formulaDescription = 'Score (0-100) = ((100 x Interested) + (25 x FollowUp) - (10 x NotInterested) - (15 x Discard) - (2 x CNC) - (2 x SwitchOff)) / (TotalCalls x 100) x 100. Higher interested and followup calls improve your score. Not Interested, Discard, CNC and SwitchOff reduce it.';
+
+  res.json({ rankings, formulaDescription });
+});
+
+// ─── Followup Management Endpoints ─────────────────────────────────────────────
+// PUT /api/admin/followup/:numberId - Edit followup date, time, and name
+app.put('/api/admin/followup/:numberId', (req, res) => {
+  const { numberId } = req.params;
+  const { followupDate, followupTime, followupName } = req.body;
+  const num = appState.numbers.find(n => n.id === numberId);
+  if (!num) return res.status(404).json({ error: 'Number not found' });
+  if (num.disposition !== 'followup') return res.status(400).json({ error: 'Number is not a followup' });
+  if (followupDate !== undefined) num.followupDate = followupDate;
+  if (followupTime !== undefined) num.followupTime = followupTime;
+  if (followupName !== undefined) num.followupName = followupName;
+  saveState(appState);
+  broadcastAdminStats();
+  res.json({ success: true, id: num.id, followupDate: num.followupDate, followupTime: num.followupTime, followupName: num.followupName || '' });
+});
+
+// DELETE /api/admin/followup/:numberId - Remove followup (lead goes to NI)
+app.delete('/api/admin/followup/:numberId', (req, res) => {
+  const { numberId } = req.params;
+  const num = appState.numbers.find(n => n.id === numberId);
+  if (!num) return res.status(404).json({ error: 'Number not found' });
+  if (num.disposition !== 'followup') return res.status(400).json({ error: 'Number is not a followup' });
+  num.disposition = 'not_interested';
+  num.permanent = true;
+  num.blockedUntil = null;
+  num.followupDate = null;
+  num.followupTime = null;
+  num.followupLockedBy = null;
+  num.followupName = null;
+  saveState(appState);
+  broadcastAdminStats();
+  res.json({ success: true });
+});
+
+// DELETE /api/agent/followup/:numberId - Agent removes followup (lead goes to NI)
+app.delete('/api/agent/followup/:numberId', (req, res) => {
+  const { numberId } = req.params;
+  const { agentId } = req.body || {};
+  const num = appState.numbers.find(n => n.id === numberId);
+  if (!num) return res.status(404).json({ error: 'Number not found' });
+  if (num.disposition !== 'followup') return res.status(400).json({ error: 'Number is not a followup' });
+  num.disposition = 'not_interested';
+  num.permanent = true;
+  num.blockedUntil = null;
+  num.followupDate = null;
+  num.followupTime = null;
+  num.followupLockedBy = null;
+  num.followupName = null;
+  saveState(appState);
+  broadcastAdminStats();
+  res.json({ success: true });
+});
+
+// GET /api/admin/followups-by-agent - Followups grouped by agent
+app.get('/api/admin/followups-by-agent', (req, res) => {
+  const followups = appState.numbers.filter(n => n.disposition === 'followup');
+  const grouped = {};
+  followups.forEach(n => {
+    const agentId = n.followupLockedBy || 'unassigned';
+    if (!grouped[agentId]) {
+      const agent = appState.agents[agentId];
+      grouped[agentId] = { agentId, agentName: agent ? agent.name : agentId, followups: [] };
+    }
+    grouped[agentId].followups.push({
+      id: n.id, phone: n.phone, name: n.name || '',
+      followupDate: n.followupDate,
+      followupTime: n.followupTime,
+      followupName: n.followupName || '',
+      followupCount: n.followupCount || 0
+    });
+  });
+  // Sort each agent's followups by nearest date
+  Object.values(grouped).forEach(g => {
+    g.followups.sort((a, b) => {
+      const dateA = (a.followupDate || '9999-12-31') + ' ' + (a.followupTime || '23:59');
+      const dateB = (b.followupDate || '9999-12-31') + ' ' + (b.followupTime || '23:59');
+      return dateA.localeCompare(dateB);
+    });
+  });
+  res.json(Object.values(grouped));
+});
+
+// GET /api/agent/due-followups/:agentId - Followups whose date+time has arrived (popup trigger)
+app.get('/api/agent/due-followups/:agentId', (req, res) => {
+  const agentId = req.params.agentId;
+  const now = new Date();
+  const ist = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+  const todayStr = ist.toISOString().slice(0, 10);
+  const currentTime = ist.toISOString().slice(11, 16); // HH:MM
+
+  const dueFollowups = appState.numbers.filter(n => {
+    if (n.disposition !== 'followup') return false;
+    if (n.followupLockedBy !== agentId) return false;
+    if (!n.followupDate) return false;
+    // Due if date is today and time has passed, or date is in the past
+    if (n.followupDate < todayStr) return true;
+    if (n.followupDate === todayStr) {
+      const fTime = n.followupTime || '00:00';
+      if (fTime <= currentTime) return true;
+    }
+    return false;
+  }).map(n => ({
+    id: n.id, phone: n.phone, name: n.name || '',
+    followupDate: n.followupDate,
+    followupTime: n.followupTime,
+    followupName: n.followupName || '',
+    followupCount: n.followupCount || 0
+  }));
+
+  // Sort by nearest first
+  dueFollowups.sort((a, b) => {
+    const dateA = (a.followupDate || '9999-12-31') + ' ' + (a.followupTime || '23:59');
+    const dateB = (b.followupDate || '9999-12-31') + ' ' + (b.followupTime || '23:59');
+    return dateA.localeCompare(dateB);
+  });
+
+  res.json(dueFollowups);
+});
+
+// POST /api/admin/upload-followups - Upload custom Excel with followups
+const followupUpload = multer({ dest: UPLOADS_DIR });
+app.post('/api/admin/upload-followups', followupUpload.single('file'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const wb = XLSX.readFile(req.file.path);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    let added = 0;
+    let skipped = 0;
+    const existingPhones = new Set(appState.numbers.map(n => n.phone));
+
+    rows.forEach((row, i) => {
+      if (i === 0) return; // Skip header row
+      const phone = String(row[0] || '').trim().replace(/\s+/g, '');
+      if (!phone || phone.length < 7) return;
+      const name = row[1] ? String(row[1]).trim() : '';
+      const followupDate = row[2] ? String(row[2]).trim() : null;
+      const followupTime = row[3] ? String(row[3]).trim() : null;
+      const agentId = row[4] ? String(row[4]).trim() : null;
+      const followupName = row[5] ? String(row[5]).trim() : '';
+
+      if (existingPhones.has(phone)) {
+        // If number exists, update its followup if not already permanently removed
+        const existing = appState.numbers.find(n => n.phone === phone);
+        if (existing && existing.disposition !== 'discard' && existing.disposition !== 'interested' && !existing.permanent) {
+          existing.disposition = 'followup';
+          existing.followupDate = followupDate;
+          existing.followupTime = followupTime;
+          existing.followupLockedBy = agentId || existing.followupLockedBy;
+          existing.followupName = followupName || existing.followupName || '';
+          if (!existing.followupCount) existing.followupCount = 0;
+          existing.followupCount++;
+          added++;
+        } else {
+          skipped++;
+        }
+        return;
+      }
+
+      existingPhones.add(phone);
+      const newEntry = {
+        id: uuidv4(),
+        phone,
+        name,
+        file: null,
+        assignedTo: null,
+        dialedBy: null,
+        dialedAt: null,
+        disposition: 'followup',
+        followupDate,
+        followupTime,
+        followupLockedBy: agentId || null,
+        followupName: followupName,
+        followupCount: 1
+      };
+      appState.numbers.push(newEntry);
+      added++;
+    });
+
+    saveState(appState);
+    fs.unlinkSync(req.file.path);
+    broadcastAdminStats();
+    res.json({ success: true, added, skipped });
+  } catch (e) {
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch {} }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/download-followup-sample - Download sample Excel for followup upload
+app.get('/api/admin/download-followup-sample', (req, res) => {
+  const sampleData = [
+    ['Phone', 'Name', 'FollowupDate (YYYY-MM-DD)', 'FollowupTime (HH:MM)', 'AgentId (emp_XXX)', 'FollowupName'],
+    ['9876543210', 'John Doe', '2025-01-20', '10:30', 'emp_101', 'Loan discussion'],
+    ['9876543211', 'Jane Smith', '2025-01-21', '14:00', 'emp_102', 'Document collection']
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sampleData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Followups');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Disposition', 'attachment; filename=followup-sample.xlsx');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
+});
+
+// ─── Admin Timer Control (fix broadcast to all) ───────────────────────────────
+app.post('/api/admin/agent/break/end', (req, res) => {
+  const { agentId } = req.body;
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+  const result = endBreak(agentId);
+  // Broadcast to ALL connected clients so agent sees the update
+  io.emit('timer-update', { agentId, type: 'break', action: 'end', ...result });
+  broadcastAdminStats();
+  res.json(result);
+});
+
+app.post('/api/admin/agent/washroom/end', (req, res) => {
+  const { agentId } = req.body;
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+  const result = endWashroom(agentId);
+  // Broadcast to ALL connected clients so agent sees the update
+  io.emit('timer-update', { agentId, type: 'washroom', action: 'end', ...result });
+  broadcastAdminStats();
+  res.json(result);
+});
+
+app.post('/api/admin/agent/meeting/end', (req, res) => {
+  const { agentId } = req.body;
+  if (!agentId) return res.status(400).json({ error: 'agentId required' });
+  const result = endMeeting(agentId);
+  // Broadcast to ALL connected clients so agent sees the update
+  io.emit('timer-update', { agentId, type: 'meeting', action: 'end', ...result });
+  broadcastAdminStats();
+  res.json(result);
 });
 
 // ─── Page Routes ──────────────────────────────────────────────────────────────
