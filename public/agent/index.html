@@ -388,16 +388,11 @@
   <div class="login-wrap">
     <div class="login-card">
       <h2>Agent Login</h2>
-      <p class="sub">Enter your details to start dialing</p>
+      <p class="sub">Enter your Employee ID to start dialing</p>
       <div class="field">
         <label>Employee ID</label>
         <input type="number" id="empId" placeholder="e.g. 1001" min="1" autocomplete="off">
         <div class="err" id="errEmpId">Please enter a valid numeric Employee ID</div>
-      </div>
-      <div class="field">
-        <label>Your Name</label>
-        <input type="text" id="agentName" placeholder="e.g. Rahul Sharma" autocomplete="off">
-        <div class="err" id="errName">Please enter your name</div>
       </div>
       <button class="btn-login" onclick="registerAgent()">Enter Dialer →</button>
     </div>
@@ -664,6 +659,17 @@
               <input type="text" id="manualPhone" placeholder="10-digit number" maxlength="10">
             </div>
             <div class="field">
+              <label>Loan Type <span style="color:#ef4444">*</span></label>
+              <select id="manualLoanType">
+                <option value="">-- Select Loan Type --</option>
+                <option value="BL_Business">BL_Business</option>
+                <option value="LAP_Business">LAP_Business</option>
+                <option value="LAP_Salaried">LAP_Salaried</option>
+                <option value="PL_Business">PL_Business</option>
+                <option value="PL_Salaried">PL_Salaried</option>
+              </select>
+            </div>
+            <div class="field">
               <label>Required Amount <span style="color:#ef4444">*</span></label>
               <input type="number" id="manualLoanAmount" placeholder="e.g. 500000" min="1">
             </div>
@@ -694,11 +700,12 @@
               <th>Name</th>
               <th>Loan Amt</th>
               <th>Completed At</th>
+              <th>Elapsed</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody id="completedTable">
-            <tr><td colspan="5" class="empty">No completed leads yet</td></tr>
+            <tr><td colspan="6" class="empty">No completed leads yet</td></tr>
           </tbody>
         </table>
       </div>
@@ -747,6 +754,18 @@
       <span class="field-err" id="errILoanAmt" style="display:none">Please enter the required amount</span>
     </div>
     <div class="field">
+      <label>Loan Type <span style="color:#ef4444">*</span></label>
+      <select id="interestedLoanType">
+        <option value="">-- Select Loan Type --</option>
+        <option value="BL_Business">BL_Business</option>
+        <option value="LAP_Business">LAP_Business</option>
+        <option value="LAP_Salaried">LAP_Salaried</option>
+        <option value="PL_Business">PL_Business</option>
+        <option value="PL_Salaried">PL_Salaried</option>
+      </select>
+      <span class="field-err" id="errILoanType" style="display:none">Please select a loan type</span>
+    </div>
+    <div class="field">
       <label>Remarks <span style="color:#ef4444">*</span></label>
       <textarea id="interestedRemarks" placeholder="Notes about this lead, income details, etc..." rows="3"></textarea>
       <span class="field-err" id="errIRemarks" style="display:none">Please add remarks about this lead</span>
@@ -793,6 +812,16 @@
       <button class="btn-cancel-modal" onclick="closeDocZipModal()" style="flex:0 0 auto">Cancel</button>
     </div>
     <p style="font-size:11px;color:var(--muted);margin-top:12px;">Lead will be moved to Documentation Completed after successful upload</p>
+  </div>
+</div>
+
+<!-- ── LOGIN POPUP MODAL ── -->
+<div class="modal-overlay" id="loginPopupModal">
+  <div class="modal-box" style="max-width:440px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;" id="loginPopupIcon"></div>
+    <h3 id="loginPopupTitle" style="margin-bottom:12px;"></h3>
+    <p id="loginPopupMsg" style="font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap;"></p>
+    <button class="btn-confirm blue" onclick="closeLoginPopup()" style="margin-top:20px">OK</button>
   </div>
 </div>
 
@@ -962,17 +991,14 @@ function applyAgentState(d, fromRestore) {
 // ── Register ──────────────────────────────────────────────────────────────────
 async function registerAgent() {
   const empVal  = document.getElementById('empId').value.trim();
-  const nameVal = document.getElementById('agentName').value.trim();
   let valid = true;
   document.getElementById('errEmpId').style.display = 'none';
-  document.getElementById('errName').style.display  = 'none';
   if (!empVal || !/^\d+$/.test(empVal)) { document.getElementById('errEmpId').style.display = 'block'; valid = false; }
-  if (!nameVal)                          { document.getElementById('errName').style.display  = 'block'; valid = false; }
   if (!valid) return;
 
   const r = await fetch('/api/agent/register', {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ name: nameVal, employeeId: empVal })
+    body: JSON.stringify({ name: '', employeeId: empVal })
   });
   const d = await r.json();
   if (d.error) {
@@ -986,12 +1012,36 @@ async function registerAgent() {
   sessionStorage.setItem('empId', empId);
   showDialer(agentName, empId);
   applyAgentState(d, true);
+  // Show login popup
+  showLoginPopup(d.lateLogin);
 }
 
 function logoutAgent() {
   if (!confirm('Are you sure you want to logout?')) return;
   sessionStorage.clear();
   location.reload();
+}
+
+function showLoginPopup(lateLogin) {
+  var icon = document.getElementById('loginPopupIcon');
+  var title = document.getElementById('loginPopupTitle');
+  var msg = document.getElementById('loginPopupMsg');
+  if (lateLogin) {
+    icon.textContent = '\u26A0\uFE0F';
+    title.textContent = '\u091A\u0947\u0924\u093E\u0935\u0928\u0940!';
+    title.style.color = 'var(--danger)';
+    msg.textContent = '\u0906\u092A \u0905\u092A\u0928\u0947 \u0928\u093F\u0930\u094D\u0927\u093E\u0930\u093F\u0924 \u0915\u093E\u0930\u094D\u092F\u093E\u0932\u092F \u0938\u092E\u092F \u0938\u0947 \u0926\u0947\u0930 \u0938\u0947 \u0932\u0949\u0917\u093F\u0928 \u0939\u0941\u090F \u0939\u0948\u0902\u0964 \u092F\u0939 \u0917\u0902\u092D\u0940\u0930 \u0905\u0928\u0941\u0936\u093E\u0938\u0928\u0939\u0940\u0928\u0924\u093E \u092E\u093E\u0928\u0940 \u091C\u093E\u090F\u0917\u0940\u0964 \u0906\u092A\u0915\u0940 \u0926\u0947\u0930\u0940 \u0915\u0940 \u091C\u093E\u0928\u0915\u093E\u0930\u0940 \u0938\u094D\u0935\u091A\u093E\u0932\u093F\u0924 \u0930\u0942\u092A \u0938\u0947 \u0938\u0949\u095E\u094D\u091F\u0935\u0947\u092F\u0930 \u0915\u0947 \u092E\u093E\u0927\u094D\u092F\u092E \u0938\u0947 \u092E\u093E\u0932\u093F\u0915\u094B\u0902 (Owners) \u090F\u0935\u0902 \u091F\u0940\u092E \u0932\u0940\u0921\u0930 (TL) \u0915\u094B \u092D\u0947\u091C \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964 \u0915\u0943\u092A\u092F\u093E \u092D\u0935\u093F\u0937\u094D\u092F \u092E\u0947\u0902 \u0938\u092E\u092F \u0915\u093E \u092A\u093E\u0932\u0928 \u0915\u0930\u0947\u0902, \u0905\u0928\u094D\u092F\u0925\u093E \u0906\u0935\u0936\u094D\u092F\u0915 \u092A\u094D\u0930\u0936\u093E\u0938\u0928\u093F\u0915 \u0915\u093E\u0930\u094D\u0930\u0935\u093E\u0908 \u0915\u0940 \u091C\u093E \u0938\u0915\u0924\u0940 \u0939\u0948\u0964';
+  } else {
+    icon.textContent = '\u2705';
+    title.textContent = '\u0938\u092E\u092F \u092A\u0930 \u0932\u0949\u0917\u093F\u0928!';
+    title.style.color = 'var(--green)';
+    msg.textContent = '\u0906\u092A\u0928\u0947 \u0938\u092E\u092F \u092A\u0930 \u0932\u0949\u0917\u093F\u0928 \u0915\u093F\u092F\u093E \u0939\u0948\u0964 \u092C\u0939\u0941\u0924 \u0905\u091A\u094D\u091B\u093E \u0915\u093E\u0930\u094D\u092F, \u0907\u0938\u0940 \u0924\u0930\u0939 \u0938\u092E\u092F \u0915\u0940 \u092A\u093E\u092C\u0902\u0926\u0940 \u092C\u0928\u093E\u090F \u0930\u0916\u0947\u0902\u0964';
+  }
+  document.getElementById('loginPopupModal').classList.add('active');
+}
+
+function closeLoginPopup() {
+  document.getElementById('loginPopupModal').classList.remove('active');
 }
 
 function showDialer(name, eid) {
@@ -1382,7 +1432,8 @@ function showInterestedModal() {
   document.getElementById('interestedLeadName').value      = '';
   document.getElementById('interestedRemarks').value        = '';
   document.getElementById('interestedLoanAmount').value     = '';
-  ['errILeadName','errILoanAmt','errIRemarks'].forEach(id => {
+  document.getElementById('interestedLoanType').value       = '';
+  ['errILeadName','errILoanAmt','errIRemarks','errILoanType'].forEach(id => {
     const el = document.getElementById(id); if (el) el.style.display='none';
   });
   document.getElementById('interestedModal').classList.add('active');
@@ -1391,22 +1442,24 @@ function closeInterestedModal() { document.getElementById('interestedModal').cla
 function confirmInterested() {
   const leadName       = document.getElementById('interestedLeadName').value.trim();
   const loanAmount     = document.getElementById('interestedLoanAmount').value.trim();
+  const loanType       = document.getElementById('interestedLoanType').value;
   const remarks        = document.getElementById('interestedRemarks').value.trim();
 
   // Hide all errors first
-  ['errILeadName','errILoanAmt','errIRemarks'].forEach(id => {
+  ['errILeadName','errILoanAmt','errIRemarks','errILoanType'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
 
   let valid = true;
   if (!leadName)                              { document.getElementById('errILeadName').style.display='block'; valid=false; }
   if (!loanAmount || Number(loanAmount) <= 0) { document.getElementById('errILoanAmt').style.display='block'; valid=false; }
+  if (!loanType)                              { document.getElementById('errILoanType').style.display='block'; valid=false; }
   if (!remarks)                               { document.getElementById('errIRemarks').style.display='block'; valid=false; }
   if (!valid) return;
 
   closeInterestedModal();
   document.getElementById('dispositionPanel').style.display = 'none';
-  socket.emit('agent-disposition', { agentId, numberId: currentNumberId, disposition: 'interested', leadName, remarks, loanAmount });
+  socket.emit('agent-disposition', { agentId, numberId: currentNumberId, disposition: 'interested', leadName, remarks, loanAmount, loanType });
   currentNumberId = null;
 }
 
@@ -1477,8 +1530,7 @@ function renderInterestedTable(leads) {
       <td><span class="timer-badge ${timerClass}" data-timer-for="${escapeHtml(l.id)}">${timerText}</span></td>
       <td>
         <div class="action-cell">
-          <button class="btn-sm blue"  onclick="openLoanForm()">📄 Form</button>
-          <button class="btn-sm green" onclick="markDocumentationComplete('${escapeHtml(l.id)}')">✅ Done</button>
+          <button class="btn-sm blue"  onclick="openLoanForm('${escapeHtml(l.id)}')">📄 Form</button>
           <button class="btn-sm red"   onclick="removeInterestedLead('${escapeHtml(l.id)}')">🗑</button>
         </div>
       </td>
@@ -1501,11 +1553,12 @@ function renderFollowupsTable(leads) {
   });
   tbody.innerHTML = sorted.map(l => {
     const timeAmPm = formatTimeAmPm(l.followupTime);
+    const overdueTag = l.overdue ? ' <span style="color:#dc2626;font-weight:700;font-size:11px;background:#fef2f2;border:1px solid #fecaca;padding:2px 6px;border-radius:4px;margin-left:4px">OVERDUE</span>' : '';
     return `<tr>
     <td><span class="phone-mono">${escapeHtml(formatPhone(l.phone))}</span></td>
     <td>${escapeHtml(l.name) || '\u2014'}</td>
     <td>${escapeHtml(l.followupName) || '\u2014'}</td>
-    <td><span class="followup-date">${escapeHtml(l.followupDate || '\u2014')}</span></td>
+    <td><span class="followup-date">${escapeHtml(l.followupDate || '\u2014')}</span>${overdueTag}</td>
     <td style="font-family:var(--mono);font-size:12px">${timeAmPm}</td>
     <td><button class="btn-sm red" onclick="removeFollowup('${escapeHtml(l.id || l.numberId)}')">&#128465; Remove</button></td>
   </tr>`;
@@ -1539,7 +1592,7 @@ function renderCompletedTable(leads) {
   const tbody = document.getElementById('completedTable');
   document.getElementById('completedCountBadge').textContent = (leads||[]).length + ' lead' + ((leads||[]).length !== 1 ? 's' : '');
   if (!leads || leads.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty">No completed leads yet</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No completed leads yet</td></tr>';
     return;
   }
   tbody.innerHTML = leads.map(l => {
@@ -1548,20 +1601,28 @@ function renderCompletedTable(leads) {
       : '—';
     const statusBadge = l.adminStatus
       ? `<span class="completed-badge status">${escapeHtml(l.adminStatus)}</span>`
-      : '—';
+      : '<span class="completed-badge status">In Process</span>';
+    let elapsedStr = '—';
+    if (l.documentationCompletedAt) {
+      const elapsedMs = Date.now() - new Date(l.documentationCompletedAt).getTime();
+      const elapsedDays = Math.floor(elapsedMs / (24 * 60 * 60 * 1000));
+      const elapsedHrs = Math.floor((elapsedMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+      elapsedStr = elapsedDays + 'd ' + elapsedHrs + 'h';
+    }
     return `<tr>
       <td><span class="phone-mono">${escapeHtml(formatPhone(l.phone))}</span></td>
       <td style="font-weight:600">${escapeHtml(l.name) || '—'}</td>
       <td style="font-family:var(--mono);font-size:13px;color:var(--green)">${l.loanAmount ? '₹' + escapeHtml(l.loanAmount) : '—'}</td>
       <td style="font-size:12px;font-family:var(--mono)">${completedDate}</td>
+      <td style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--warn)">${elapsedStr}</td>
       <td>${statusBadge}</td>
     </tr>`;
   }).join('');
 }
 
 // ── Interested lead actions ───────────────────────────────────────────────────
-function openLoanForm() {
-  window.open('https://shaanxbilhatiya-star.github.io/PLJOB/index.html', '_blank');
+function openLoanForm(numberId) {
+  window.open('/forms/PLJOB-main/index.html?numberId=' + encodeURIComponent(numberId) + '&agentId=' + encodeURIComponent(agentId), '_blank');
 }
 // ── Doc ZIP upload state ─────────────────────────────────────────────────────
 let docZipTargetNumberId = null;
@@ -1666,10 +1727,6 @@ async function submitDocZip() {
   }
 }
 
-async function markDocumentationComplete(numberId) {
-  // Now triggers ZIP upload modal instead of direct API call
-  openDocZipModal(numberId);
-}
 async function removeInterestedLead(numberId) {
   if (!confirm('Are you sure you want to remove this lead permanently?')) return;
   try {
@@ -1685,22 +1742,25 @@ async function removeInterestedLead(numberId) {
 async function addInterestedManually() {
   const leadName   = document.getElementById('manualLeadName').value.trim();
   const phone      = document.getElementById('manualPhone').value.trim();
+  const loanType   = document.getElementById('manualLoanType').value;
   const loanAmount = document.getElementById('manualLoanAmount').value.trim();
   const remarks    = document.getElementById('manualRemarks').value.trim();
   if (!leadName)                    { alert('Please enter the lead name'); return; }
   if (!phone)                       { alert('Please enter a phone number'); return; }
   if (!/^\d{10}$/.test(phone))      { alert('Please enter a valid 10-digit phone number'); return; }
+  if (!loanType)                    { alert('Please select a loan type'); return; }
   if (!loanAmount || Number(loanAmount) <= 0) { alert('Please enter the required amount'); return; }
   if (!remarks)                     { alert('Please enter remarks'); return; }
   try {
     const r = await fetch('/api/agent/add-interested', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ agentId, phone, leadName, loanAmount, remarks })
+      body: JSON.stringify({ agentId, phone, leadName, loanAmount, loanType, remarks })
     });
     const d = await r.json();
     if (d.error) { alert(d.error); return; }
     document.getElementById('manualLeadName').value   = '';
     document.getElementById('manualPhone').value      = '';
+    document.getElementById('manualLoanType').value   = '';
     document.getElementById('manualLoanAmount').value = '';
     document.getElementById('manualRemarks').value    = '';
     showToast('Lead added successfully', 'success');
@@ -1840,7 +1900,7 @@ function showToast(msg, type='success') {
 setInterval(() => { if (agentId) { refreshLeadSections(); fetchMyStats(); } }, 10000);
 setInterval(() => { if (agentId) socket.emit('ping-alive', { agentId }); }, 30000);
 
-['empId','agentName'].forEach(id => {
+['empId'].forEach(id => {
   document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') registerAgent(); });
 });
 
