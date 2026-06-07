@@ -381,11 +381,6 @@
   <!-- REMAINING STATS GRID -->
   <div class="stats-grid">
     <div class="stat-card">
-      <span class="stat-label">Total Leads Dialed Today</span>
-      <span class="stat-value green" id="statDialed">0</span>
-      <span style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="dialedDateLabel"></span>
-    </div>
-    <div class="stat-card">
       <span class="stat-label">Interested</span>
       <span class="stat-value green" id="statInterested">0</span>
     </div>
@@ -475,7 +470,6 @@
       </div>
       <div class="panel-body">
         <div class="btn-row">
-          <button class="btn btn-warn" onclick="resetToday()">&#128260; Reset Today's Count</button>
           <button class="btn btn-danger" onclick="clearAll()">&#128465; Clear All Numbers</button>
           <button class="btn btn-danger" onclick="hardReset()" style="background:rgba(244,67,54,.25);border:2px solid var(--danger);font-weight:800;letter-spacing:.5px">&#128163; HARD RESET (Factory Reset)</button>
         </div>
@@ -695,15 +689,6 @@ socket.on('timer-update', () => {
   fetch('/api/admin/stats').then(r => r.json()).then(d => renderStats(d)).catch(() => {});
 });
 
-// Set today's dialed date label
-(function setDialedDate() {
-  const el = document.getElementById('dialedDateLabel');
-  if (el) {
-    const now = new Date();
-    el.textContent = now.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
-  }
-})();
-
 // Live break ticks — update admin break timers every second
 let lastStats = null;
 setInterval(() => { if (lastStats) tickBreakTimers(); }, 1000);
@@ -789,7 +774,6 @@ window._tlModeMsAtRender   = {};
 function renderStats(data) {
   lastStats = data;
   document.getElementById('statTotal').textContent = data.total;
-  document.getElementById('statDialed').textContent = data.dialed;
   document.getElementById('statRemaining').textContent = data.remaining;
   document.getElementById('statInterested').textContent = data.interestedCount || 0;
   document.getElementById('statOverdue').textContent = data.overdueInterestedCount || 0;
@@ -880,7 +864,7 @@ function renderStats(data) {
 
       const loginCell = a.firstLoginToday
         ? `<span class="login-time ${a.lateLogin ? 'login-late' : 'login-ok'}">
-             ${a.lateLogin ? '&#128308;' : '&#128994;'} ${formatLoginTime(a.firstLoginToday)}${a.lateLogin ? ' (Late)' : ''}
+             ${formatLoginTime(a.firstLoginToday)}${a.lateLogin ? ' (Late)' : ''}
            </span>`
         : `<span class="login-absent">&#8212;</span>`;
 
@@ -974,12 +958,6 @@ async function deleteFile(id) {
   if (!confirm('Delete this file and its numbers?')) return;
   await fetch('/api/admin/file/' + id, { method: 'DELETE' });
   showToast('File deleted', 'success');
-}
-
-async function resetToday() {
-  if (!confirm('Reset all dial counts and break time for today?')) return;
-  await fetch('/api/admin/reset-today', { method: 'POST' });
-  showToast('Daily counts reset', 'success');
 }
 
 async function clearAll() {
@@ -1246,14 +1224,21 @@ function renderCompletedLeads(leads) {
   }
   tbody.innerHTML = leads.map(l => {
     const completedAt = l.documentationCompletedAt ? formatTimestamp(l.documentationCompletedAt) : '&#8212;';
+    const displayStatus = l.adminStatus || 'In Process';
+    let elapsedStr = '';
+    if (displayStatus !== 'Completed' && l.documentationCompletedAt) {
+      const diffMs = Date.now() - new Date(l.documentationCompletedAt).getTime();
+      const diffD = Math.floor(diffMs / (24*60*60*1000));
+      const diffH = Math.floor((diffMs % (24*60*60*1000)) / (60*60*1000));
+      elapsedStr = `<span style="font-size:11px;color:var(--danger);font-weight:600;margin-left:6px">${diffD}d ${diffH}h</span>`;
+    }
     const statusSelect = `<select onchange="adminUpdateLeadStatus('${escapeHtml(l.id)}',this.value)" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:var(--sans)">
-      <option value="" ${!l.adminStatus?'selected':''}>-- Set Status --</option>
+      <option value="In Process" ${(!l.adminStatus||l.adminStatus==='In Process')?'selected':''}>In Process</option>
       <option value="Completed" ${l.adminStatus==='Completed'?'selected':''}>Completed</option>
-      <option value="In Process" ${l.adminStatus==='In Process'?'selected':''}>In Process</option>
       <option value="Rejected" ${l.adminStatus==='Rejected'?'selected':''}>Rejected</option>
       <option value="Approved" ${l.adminStatus==='Approved'?'selected':''}>Approved</option>
       <option value="On Hold" ${l.adminStatus==='On Hold'?'selected':''}>On Hold</option>
-    </select>`;
+    </select>${elapsedStr}`;
     const remarksCell = `<input type="text" value="${escapeHtml(l.remarks || '')}" onchange="adminUpdateInterested('${escapeHtml(l.id)}','remarks',this.value)" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);width:100px;font-family:var(--sans)" placeholder="Add remarks">`;
     const loanAmtCell = `<input type="number" value="${escapeHtml(l.loanAmount || '')}" onchange="adminUpdateInterested('${escapeHtml(l.id)}','loanAmount',this.value)" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);width:90px;font-family:var(--mono)" placeholder="Amount">`;
     const dlBtn = l.hasDocZip
@@ -1349,12 +1334,13 @@ function renderFollowups(followups) {
   }
   tbody.innerHTML = followups.map(f => {
     const numberId = f.id || f.numberId || '';
+    const overdueTag = f.overdue ? ' <span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px">OVERDUE</span>' : '';
     return `<tr>
     <td><span class="phone-number">${escapeHtml(formatPhone(f.phone))}</span></td>
     <td><input type="text" value="${escapeHtml(f.followupName || f.name || '')}" onchange="editFollowup('${escapeHtml(numberId)}', 'followupName', this.value)" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);width:100px;font-family:var(--sans)" placeholder="Name"></td>
     <td style="font-weight:500">${escapeHtml(f.agentName || f.followupLockedBy || '')}</td>
     <td><input type="date" value="${escapeHtml(f.followupDate || '')}" onchange="editFollowup('${escapeHtml(numberId)}', 'followupDate', this.value)" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:var(--mono)"></td>
-    <td><input type="time" value="${escapeHtml(f.followupTime || '')}" onchange="editFollowup('${escapeHtml(numberId)}', 'followupTime', this.value)" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:var(--mono)"> <span style="font-size:11px;color:var(--muted)">${formatTimeAmPm(f.followupTime)}</span></td>
+    <td><input type="time" value="${escapeHtml(f.followupTime || '')}" onchange="editFollowup('${escapeHtml(numberId)}', 'followupTime', this.value)" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);font-family:var(--mono)"> <span style="font-size:11px;color:var(--muted)">${formatTimeAmPm(f.followupTime)}</span>${overdueTag}</td>
     <td><button class="btn-del" onclick="removeFollowup('${escapeHtml(numberId)}')" style="padding:4px 10px">Remove</button></td>
   </tr>`;
   }).join('');

@@ -375,16 +375,11 @@
     <div class="login-card">
       <div class="login-badge">&#128084; Team Leader Access</div>
       <h2>TL Panel Login</h2>
-      <p class="sub">Enter your EID and name — TL role required</p>
+      <p class="sub">Enter your EID — TL role required</p>
       <div class="field">
         <label>Employee ID</label>
         <input type="number" id="empId" placeholder="e.g. 061007" min="1" autocomplete="off">
         <div class="err" id="errEmpId">Please enter a valid numeric Employee ID</div>
-      </div>
-      <div class="field">
-        <label>Your Name</label>
-        <input type="text" id="tlName" placeholder="e.g. Shweta Thakur" autocomplete="off">
-        <div class="err" id="errName">Please enter your name</div>
       </div>
       <button class="btn-login" onclick="loginTL()">Enter TL Panel →</button>
     </div>
@@ -412,7 +407,6 @@
 
     <!-- Stats Grid (removed: Total Uploaded, Remaining, Redialing Tomorrow) -->
     <div class="stats-grid">
-      <div class="stat-card"><span class="stat-label">Total Leads Dialed Today</span><span class="stat-value green" id="tlStatDialed">0</span><span style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="tlDialedDate"></span></div>
       <div class="stat-card"><span class="stat-label">Interested</span><span class="stat-value green" id="tlStatInterested">0</span></div>
       <div class="stat-card"><span class="stat-label">Overdue</span><span class="stat-value red" id="tlStatOverdue">0</span></div>
       <div class="stat-card"><span class="stat-label">Followups</span><span class="stat-value blue" id="tlStatFollowups">0</span></div>
@@ -877,15 +871,12 @@ socket.on('force-stop',()=>{ agentShowIdle(); });
 // ── Login ─────────────────────────────────────────────────────────────────────
 async function loginTL() {
   const empVal = document.getElementById('empId').value.trim();
-  const nameVal = document.getElementById('tlName').value.trim();
   document.getElementById('errEmpId').style.display='none';
-  document.getElementById('errName').style.display='none';
   if (!empVal||!/^\d+$/.test(empVal)) { document.getElementById('errEmpId').style.display='block'; return; }
-  if (!nameVal) { document.getElementById('errName').style.display='block'; return; }
 
   const r = await fetch('/api/tl/auth', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({employeeId:empVal, name:nameVal})
+    body: JSON.stringify({employeeId:empVal, name:''})
   });
   const d = await r.json();
   if (d.error) { const e=document.getElementById('errEmpId'); e.textContent=d.error; e.style.display='block'; return; }
@@ -896,6 +887,38 @@ async function loginTL() {
   sessionStorage.setItem('tlEmpId',tlEmpId);
 
   showTLDashboard();
+
+  // Login popup message
+  setTimeout(function() {
+    if (d.lateLogin) {
+      showLoginPopup('\u091A\u0947\u0924\u093E\u0935\u0928\u0940!\n\n\u0906\u092A \u0905\u092A\u0928\u0947 \u0928\u093F\u0930\u094D\u0927\u093E\u0930\u093F\u0924 \u0915\u093E\u0930\u094D\u092F\u093E\u0932\u092F \u0938\u092E\u092F \u0938\u0947 \u0926\u0947\u0930 \u0938\u0947 \u0932\u0949\u0917\u093F\u0928 \u0939\u0941\u090F \u0939\u0948\u0902\u0964 \u092F\u0939 \u0917\u0902\u092D\u0940\u0930 \u0905\u0928\u0941\u0936\u093E\u0938\u0928\u0939\u0940\u0928\u0924\u093E \u092E\u093E\u0928\u0940 \u091C\u093E\u090F\u0917\u0940\u0964 \u0906\u092A\u0915\u0940 \u0926\u0947\u0930\u0940 \u0915\u0940 \u091C\u093E\u0928\u0915\u093E\u0930\u0940 \u0938\u094D\u0935\u091A\u093E\u0932\u093F\u0924 \u0930\u0942\u092A \u0938\u0947 \u0938\u0949\u092B\u094D\u091F\u0935\u0947\u092F\u0930 \u0915\u0947 \u092E\u093E\u0927\u094D\u092F\u092E \u0938\u0947 \u092E\u093E\u0932\u093F\u0915\u094B\u0902 (Owners) \u090F\u0935\u0902 \u091F\u0940\u092E \u0932\u0940\u0921\u0930 (TL) \u0915\u094B \u092D\u0947\u091C \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964 \u0915\u0943\u092A\u092F\u093E \u092D\u0935\u093F\u0937\u094D\u092F \u092E\u0947\u0902 \u0938\u092E\u092F \u0915\u093E \u092A\u093E\u0932\u0928 \u0915\u0930\u0947\u0902, \u0905\u0928\u094D\u092F\u0925\u093E \u0906\u0935\u0936\u094D\u092F\u0915 \u092A\u094D\u0930\u0936\u093E\u0938\u0928\u093F\u0915 \u0915\u093E\u0930\u094D\u0930\u0935\u093E\u0908 \u0915\u0940 \u091C\u093E \u0938\u0915\u0924\u0940 \u0939\u0948\u0964', true);
+    } else {
+      showLoginPopup('\u0906\u092A\u0928\u0947 \u0938\u092E\u092F \u092A\u0930 \u0932\u0949\u0917\u093F\u0928 \u0915\u093F\u092F\u093E \u0939\u0948\u0964 \u092C\u0939\u0941\u0924 \u0905\u091A\u094D\u091B\u093E \u0915\u093E\u0930\u094D\u092F, \u0907\u0938\u0940 \u0924\u0930\u0939 \u0938\u092E\u092F \u0915\u0940 \u092A\u093E\u092C\u0902\u0926\u0940 \u092C\u0928\u093E\u090F \u0930\u0916\u0947\u0902\u0964', false);
+    }
+  }, 300);
+}
+
+function showLoginPopup(message, isLate) {
+  const overlay = document.createElement('div');
+  overlay.id = 'loginPopupOverlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:99999';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:16px;padding:32px;max-width:500px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);border-top:4px solid '+(isLate?'#dc2626':'#16a34a');
+  const icon = document.createElement('div');
+  icon.style.cssText = 'font-size:48px;margin-bottom:12px';
+  icon.textContent = isLate ? '\u26A0\uFE0F' : '\u2705';
+  const msg = document.createElement('p');
+  msg.style.cssText = 'font-size:14px;line-height:1.7;color:#1e293b;white-space:pre-line;margin-bottom:20px';
+  msg.textContent = message;
+  const btn = document.createElement('button');
+  btn.textContent = 'OK';
+  btn.style.cssText = 'padding:10px 32px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;background:'+(isLate?'#dc2626':'#16a34a')+';color:#fff';
+  btn.onclick = function() { document.body.removeChild(overlay); };
+  box.appendChild(icon);
+  box.appendChild(msg);
+  box.appendChild(btn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 function logoutTL() {
@@ -914,8 +937,6 @@ function showTLDashboard() {
   socket.emit('join-admin');
   fetchTLData();
   fetchTLLeaderboard();
-  const dateEl=document.getElementById('tlDialedDate');
-  if(dateEl) dateEl.textContent=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
   populateTLAgentFilter();
   fetchTLDispoStats();
   setInterval(()=>{fetchTLData();fetchTLLeaderboard();fetchTLDispoStats();},5000);
@@ -1010,7 +1031,6 @@ async function fetchTLData() {
 
 function renderTLStats(data) {
   lastTLStats=data;
-  document.getElementById('tlStatDialed').textContent=data.dialed;
   document.getElementById('tlStatInterested').textContent=data.interestedCount||0;
   document.getElementById('tlStatOverdue').textContent=data.overdueInterestedCount||0;
   document.getElementById('tlStatFollowups').textContent=data.followupCount||0;
@@ -1052,7 +1072,7 @@ function renderTLStats(data) {
       const netH=Math.floor(netMs/(60*60*1000)), netM=Math.floor((netMs%(60*60*1000))/(60*1000));
       const netTime=netH+'h '+netM+'m';
       const loginCell=a.firstLoginToday
-        ?`<span class="login-time ${a.lateLogin?'login-late':'login-ok'}">${a.lateLogin?'🔴':'🟢'} ${formatLoginTime(a.firstLoginToday)}${a.lateLogin?' (Late)':''}</span>`
+        ?`<span class="login-time ${a.lateLogin?'login-late':'login-ok'}">${formatLoginTime(a.firstLoginToday)}${a.lateLogin?' (Late)':''}</span>`
         :`<span class="login-absent">—</span>`;
       return `<tr>
         <td style="font-weight:600">${escapeHtml(a.name)}</td>
@@ -1228,14 +1248,21 @@ function renderTLCompleted(leads) {
   document.getElementById('completedCountBadge').textContent=leads.length+' lead'+(leads.length!==1?'s':'');
   if(!leads||!leads.length){tb.innerHTML='<tr><td colspan="8" class="empty">No completed leads yet</td></tr>';return;}
   tb.innerHTML=leads.map(l=>{
-    const cAt=l.documentationCompletedAt?formatTimestamp(l.documentationCompletedAt):'—';
+    const cAt=l.documentationCompletedAt?formatTimestamp(l.documentationCompletedAt):'\u2014';
+    const displayStatus=l.adminStatus||'In Process';
+    let elapsedStr='';
+    if(displayStatus!=='Completed'&&l.documentationCompletedAt){
+      const diffMs=Date.now()-new Date(l.documentationCompletedAt).getTime();
+      const diffD=Math.floor(diffMs/(24*60*60*1000));
+      const diffH=Math.floor((diffMs%(24*60*60*1000))/(60*60*1000));
+      elapsedStr='<span style="font-size:11px;color:#dc2626;font-weight:600;margin-left:6px">'+diffD+'d '+diffH+'h</span>';
+    }
     const ss=`<select onchange="tlUpdateLeadStatus('${escapeHtml(l.id)}',this.value)" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg)">
-      <option value="" ${!l.adminStatus?'selected':''}>-- Status --</option>
+      <option value="In Process" ${(!l.adminStatus||l.adminStatus==='In Process')?'selected':''}>In Process</option>
       <option value="Completed" ${l.adminStatus==='Completed'?'selected':''}>Completed</option>
-      <option value="In Process" ${l.adminStatus==='In Process'?'selected':''}>In Process</option>
       <option value="Rejected" ${l.adminStatus==='Rejected'?'selected':''}>Rejected</option>
       <option value="Approved" ${l.adminStatus==='Approved'?'selected':''}>Approved</option>
-      <option value="On Hold" ${l.adminStatus==='On Hold'?'selected':''}>On Hold</option></select>`;
+      <option value="On Hold" ${l.adminStatus==='On Hold'?'selected':''}>On Hold</option></select>${elapsedStr}`;
     const rc=`<input type="text" value="${escapeHtml(l.remarks||'')}" onchange="tlUpdateInterested('${escapeHtml(l.id)}','remarks',this.value)" style="font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);width:90px">`;
     const la=`<input type="number" value="${escapeHtml(l.loanAmount||'')}" onchange="tlUpdateInterested('${escapeHtml(l.id)}','loanAmount',this.value)" style="font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);width:80px">`;
     const dlBtn=l.hasDocZip?`<a href="/api/admin/download-doc-zip/${escapeHtml(l.id)}" download style="font-size:12px;padding:4px 10px;border-radius:6px;background:#2563eb;color:#fff;text-decoration:none;font-weight:600">📥 ZIP</a>`:'<span style="font-size:11px;color:var(--muted)">No file</span>';
@@ -1273,10 +1300,11 @@ function renderTLFollowups(fs) {
   if(!filtered.length){tb.innerHTML='<tr><td colspan="6" class="empty">No followups for this filter</td></tr>';return;}
   tb.innerHTML=filtered.map(f=>{
     const numberId=f.numberId||f.id||'';
+    const overdueTag = f.overdue ? ' <span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px">OVERDUE</span>' : '';
     return `<tr><td><span class="phone-number">${escapeHtml(formatPhone(f.phone))}</span></td>
     <td>${escapeHtml(f.followupName||f.name)||'\u2014'}</td><td style="font-weight:500">${escapeHtml(f.agentName||f.followupLockedBy)||'\u2014'}</td>
     <td style="font-family:var(--mono);font-size:13px">${escapeHtml(f.followupDate||'\u2014')}</td>
-    <td style="font-family:var(--mono);font-size:13px">${formatTimeAmPm(f.followupTime)}</td>
+    <td style="font-family:var(--mono);font-size:13px">${formatTimeAmPm(f.followupTime)}${overdueTag}</td>
     <td><button class="btn-sm danger" onclick="tlRemoveFollowup('${escapeHtml(numberId)}')">Remove</button></td></tr>`;
   }).join('');
 }
@@ -1536,7 +1564,7 @@ function agentEndMeeting(){socket.emit('agent-meeting-end',{agentId:tlAgentId});
 socket.on('meeting-started',d=>{if(d.error){alert(d.error);return;}onMeeting=true;meetingStartedAt=d.meetingStartedAt||Date.now();['agentBtnBreak','agentBtnWashroom','agentBtnMeeting','agentDispositionPanel','agentNumberDisplay','agentIdleOverlay','agentBtnStart'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('agentBtnEndMeeting').style.display='block';if(meetingInterval)clearInterval(meetingInterval);meetingInterval=setInterval(()=>{if(!onMeeting||!meetingStartedAt)return;const u=totalMeetingMsUsed+Date.now()-meetingStartedAt;document.getElementById('agentMeetingUsed').textContent=formatMs(u);},1000);});
 socket.on('meeting-ended',d=>{if(d.error){alert(d.error);return;}onMeeting=false;meetingStartedAt=null;totalMeetingMsUsed=d.totalMeetingMs||totalMeetingMsUsed;if(meetingInterval){clearInterval(meetingInterval);meetingInterval=null;}document.getElementById('agentMeetingUsed').textContent=formatMs(totalMeetingMsUsed);document.getElementById('agentBtnEndMeeting').style.display='none';if(agentCurrentNumberId){document.getElementById('agentNumberDisplay').style.display='block';document.getElementById('agentDispositionPanel').style.display='block';if(!breakExhausted){document.getElementById('agentBtnBreak').style.display='block';document.getElementById('agentBtnBreak').disabled=false;}document.getElementById('agentBtnWashroom').style.display='block';document.getElementById('agentBtnMeeting').style.display='block';}else agentShowIdle();});
 
-['empId','tlName'].forEach(id=>{
+['empId'].forEach(id=>{
   document.getElementById(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')loginTL();});
 });
 
