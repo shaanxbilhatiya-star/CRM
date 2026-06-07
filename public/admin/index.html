@@ -441,41 +441,41 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Agents Panel -->
-    <div class="panel">
-      <div class="panel-header">
-        <h2>Active Agents</h2>
-        <span id="agentCount" style="font-size:12px;color:var(--muted)">0 agents</span>
-      </div>
-      <div class="panel-body" style="padding:0;overflow-x:auto">
-        <table class="agents-table" style="min-width:900px">
-          <thead>
-            <tr>
-              <th>Agent</th>
-              <th>Login</th>
-              <th>Status</th>
-              <th>Total No. Dialed</th>
-              <th>Net Dialing Time <span title="Net Dialing Time = 8h shift - Break - Meeting - Washroom - TL Mode (time available for actual calling)" style="cursor:help;opacity:.7">&#9432;</span></th>
-              <th>Break Used</th>
-              <th>&#128699; Washroom</th>
-              <th>&#128203; Meeting</th>
-              <th>&#128203; TL Mode</th>
-            </tr>
-          </thead>
-          <tbody id="agentTable">
-            <tr><td colspan="9" class="empty">No agents registered</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="panel-body">
-        <div class="btn-row">
-          <button class="btn btn-danger" onclick="clearAll()">&#128465; Clear All Numbers</button>
-          <button class="btn btn-danger" onclick="hardReset()" style="background:rgba(244,67,54,.25);border:2px solid var(--danger);font-weight:800;letter-spacing:.5px">&#128163; HARD RESET (Factory Reset)</button>
-        </div>
+  <!-- Active Agents Panel (full width) -->
+  <div class="panel" style="margin-bottom:20px">
+    <div class="panel-header">
+      <h2>Active Agents</h2>
+      <span id="agentCount" style="font-size:12px;color:var(--muted)">0 agents</span>
+    </div>
+    <div class="panel-body" style="padding:0;overflow-x:auto">
+      <table class="agents-table" style="min-width:900px">
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>Login</th>
+            <th>Status</th>
+            <th>Total No. Dialed</th>
+            <th>Net Dialing Time <span title="Net Dialing Time = 8h shift - Break - Meeting - Washroom - TL Mode (time available for actual calling)" style="cursor:help;opacity:.7">&#9432;</span></th>
+            <th>Break Used</th>
+            <th>&#128699; Washroom</th>
+            <th>&#128203; Meeting</th>
+            <th>&#128203; TL Mode</th>
+          </tr>
+        </thead>
+        <tbody id="agentTable">
+          <tr><td colspan="9" class="empty">No agents registered</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel-body">
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="clearAll()">&#128465; Clear All Numbers</button>
+        <button class="btn btn-danger" onclick="hardReset()" style="background:rgba(244,67,54,.25);border:2px solid var(--danger);font-weight:800;letter-spacing:.5px">&#128163; HARD RESET (Factory Reset)</button>
       </div>
     </div>
-  </div><!-- end grid-2 -->
+  </div>
 
   <!-- Interested Leads Panel -->
   <div class="panel panel-interested">

@@ -681,8 +681,9 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="field"><label>Name <span style="color:#ef4444">*</span></label><input type="text" id="tla-addName" placeholder="e.g. Amit Kumar"></div>
             <div class="field"><label>Mob No <span style="color:#ef4444">*</span></label><input type="text" id="tla-addPhone" placeholder="10-digit number" maxlength="10"></div>
+            <div class="field"><label>Loan Type <span style="color:#ef4444">*</span></label><select id="tla-manualLoanType" style="width:100%;padding:12px 16px;border-radius:10px;font-size:15px"><option value="">-- Select Loan Type --</option><option value="BL_Business">BL_Business</option><option value="LAP_Business">LAP_Business</option><option value="LAP_Salaried">LAP_Salaried</option><option value="PL_Business">PL_Business</option><option value="PL_Salaried">PL_Salaried</option></select></div>
             <div class="field"><label>Required Amount <span style="color:#ef4444">*</span></label><input type="number" id="tla-addAmount" placeholder="e.g. 500000" min="1"></div>
-            <div class="field"><label>Remarks <span style="color:#ef4444">*</span></label><input type="text" id="tla-addRemarks" placeholder="Notes about this lead"></div>
+            <div class="field" style="grid-column:span 2"><label>Remarks <span style="color:#ef4444">*</span></label><input type="text" id="tla-addRemarks" placeholder="Notes about this lead"></div>
           </div>
           <div style="display:flex;justify-content:flex-end;margin-top:12px">
             <button class="action-btn" onclick="tlaAddInterestedManually()" style="background:var(--green);color:#fff;max-width:240px">+ Add Lead</button>
@@ -700,8 +701,8 @@
       </div>
       <div class="panel-body" style="padding:0;overflow-x:auto">
         <table class="leads-table">
-          <thead><tr><th>Phone</th><th>Name</th><th>Loan Amt</th><th>Completed At</th><th>Status</th></tr></thead>
-          <tbody id="tla-completedTable"><tr><td colspan="5" class="empty">No completed leads yet</td></tr></tbody>
+          <thead><tr><th>Phone</th><th>Name</th><th>Loan Amt</th><th>Completed At</th><th>Elapsed</th><th>Status</th></tr></thead>
+          <tbody id="tla-completedTable"><tr><td colspan="6" class="empty">No completed leads yet</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -777,6 +778,7 @@
     <p class="modal-sub">Fill in lead details (all mandatory)</p>
     <div class="field"><label>Lead Name *</label><input type="text" id="iLeadName"><span class="field-err" id="errILeadName">Required</span></div>
     <div class="field"><label>Required Amount (₹) *</label><input type="number" id="iLoanAmount" min="1"><span class="field-err" id="errILoanAmt">Required</span></div>
+    <div class="field"><label>Loan Type *</label><select id="interestedLoanType" style="width:100%;padding:10px 14px;border-radius:8px;font-size:14px"><option value="">-- Select Loan Type --</option><option value="BL_Business">BL_Business</option><option value="LAP_Business">LAP_Business</option><option value="LAP_Salaried">LAP_Salaried</option><option value="PL_Business">PL_Business</option><option value="PL_Salaried">PL_Salaried</option></select><span class="field-err" id="errILoanType">Required</span></div>
     <div class="field"><label>Remarks *</label><textarea id="iRemarks" rows="3"></textarea><span class="field-err" id="errIRemarks">Required</span></div>
     <button class="btn-confirm-a green" onclick="agentConfirmInterested()">✅ Confirm Interested</button>
     <button class="btn-cancel-a" onclick="document.getElementById('interestedModal').classList.remove('active')">Cancel</button>
@@ -1524,22 +1526,25 @@ function agentConfirmFollowup(){
 
 function showInterestedModal(){
   ['iLeadName','iLoanAmount','iRemarks'].forEach(id=>document.getElementById(id)&&(document.getElementById(id).value=''));
-  ['errILeadName','errILoanAmt','errIRemarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  document.getElementById('interestedLoanType').value='';
+  ['errILeadName','errILoanAmt','errIRemarks','errILoanType'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('interestedModal').classList.add('active');
 }
 function agentConfirmInterested(){
   const ln=document.getElementById('iLeadName').value.trim();
   const la=document.getElementById('iLoanAmount').value.trim();
   const rm=document.getElementById('iRemarks').value.trim();
-  ['errILeadName','errILoanAmt','errIRemarks'].forEach(id=>{document.getElementById(id).style.display='none';});
+  const lt=document.getElementById('interestedLoanType').value;
+  ['errILeadName','errILoanAmt','errIRemarks','errILoanType'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   let ok=true;
   if(!ln){document.getElementById('errILeadName').style.display='block';ok=false;}
   if(!la||Number(la)<=0){document.getElementById('errILoanAmt').style.display='block';ok=false;}
+  if(!lt){document.getElementById('errILoanType').style.display='block';ok=false;}
   if(!rm){document.getElementById('errIRemarks').style.display='block';ok=false;}
   if(!ok) return;
   document.getElementById('interestedModal').classList.remove('active');
   document.getElementById('agentDispositionPanel').style.display='none';
-  socket.emit('agent-disposition',{agentId:tlAgentId,numberId:agentCurrentNumberId,disposition:'interested',leadName:ln,loanAmount:la,remarks:rm});
+  socket.emit('agent-disposition',{agentId:tlAgentId,numberId:agentCurrentNumberId,disposition:'interested',leadName:ln,loanAmount:la,remarks:rm,loanType:lt});
   agentCurrentNumberId=null;
 }
 
@@ -1674,6 +1679,7 @@ async function fetchAgentInterested() {
         <td style="font-family:var(--mono);font-size:13px">${escapeHtml(l.loanAmount)||'\u2014'}</td>
         <td>${tc}</td>
         <td style="white-space:nowrap">
+          <button class="btn-sm tl" onclick="tlaOpenLoanForm('${escapeHtml(l.id)}')">&#128196; Form</button>
           <button class="btn-sm tl" onclick="tlaOpenDocZipModal('${escapeHtml(l.id)}')">&#128230; Upload</button>
           <button class="btn-sm danger" onclick="tlaRemoveInterested('${escapeHtml(l.id)}')">Remove</button>
         </td></tr>`;
@@ -1698,11 +1704,12 @@ async function fetchAgentFollowups() {
     });
     tb.innerHTML=fs.map(f=>{
       const numberId=f.numberId||f.id||'';
+      const overdueTag = f.overdue ? ' <span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px">OVERDUE</span>' : '';
       return `<tr>
       <td><span class="phone-number">${escapeHtml(formatPhone(f.phone))}</span></td>
       <td>${escapeHtml(f.followupName||f.name)||'\u2014'}</td>
       <td style="font-family:var(--mono);font-size:13px">${escapeHtml(f.followupDate||'\u2014')}</td>
-      <td style="font-family:var(--mono);font-size:13px">${formatTimeAmPm(f.followupTime)}</td>
+      <td style="font-family:var(--mono);font-size:13px">${formatTimeAmPm(f.followupTime)}${overdueTag}</td>
       <td><button class="btn-sm danger" onclick="tlaRemoveFollowup('${escapeHtml(numberId)}')">Remove</button></td></tr>`;
     }).join('');
   } catch(e){}
@@ -1715,13 +1722,23 @@ async function fetchAgentCompleted() {
     const leads=await r.json();
     document.getElementById('tla-completedCount').textContent=leads.length+' lead'+(leads.length!==1?'s':'');
     const tb=document.getElementById('tla-completedTable');
-    if(!leads||!leads.length){tb.innerHTML='<tr><td colspan="5" class="empty">No completed leads yet</td></tr>';return;}
-    tb.innerHTML=leads.map(l=>`<tr>
+    if(!leads||!leads.length){tb.innerHTML='<tr><td colspan="6" class="empty">No completed leads yet</td></tr>';return;}
+    tb.innerHTML=leads.map(l=>{
+      let elapsedStr='\u2014';
+      if(l.documentationCompletedAt){
+        const elapsedMs=Date.now()-new Date(l.documentationCompletedAt).getTime();
+        const elapsedDays=Math.floor(elapsedMs/(24*60*60*1000));
+        const elapsedHrs=Math.floor((elapsedMs%(24*60*60*1000))/(60*60*1000));
+        elapsedStr=elapsedDays+'d '+elapsedHrs+'h';
+      }
+      return `<tr>
       <td><span class="phone-number">${escapeHtml(formatPhone(l.phone))}</span></td>
       <td>${escapeHtml(l.name)||'\u2014'}</td>
       <td style="font-family:var(--mono);font-size:13px">${escapeHtml(l.loanAmount)||'\u2014'}</td>
       <td style="font-size:12px;font-family:var(--mono)">${formatTimestamp(l.documentationCompletedAt)}</td>
-      <td><span class="loan-type-pill">${escapeHtml(l.adminStatus)||'Pending'}</span></td></tr>`).join('');
+      <td style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--warn)">${elapsedStr}</td>
+      <td><span class="loan-type-pill">${escapeHtml(l.adminStatus)||'In Process'}</span></td></tr>`;
+    }).join('');
   } catch(e){}
 }
 
@@ -1729,18 +1746,21 @@ async function fetchAgentCompleted() {
 async function tlaAddInterestedManually() {
   const phone=document.getElementById('tla-addPhone').value.trim();
   const leadName=document.getElementById('tla-addName').value.trim();
+  const loanType=document.getElementById('tla-manualLoanType').value;
   const loanAmount=document.getElementById('tla-addAmount').value.trim();
   const remarks=document.getElementById('tla-addRemarks').value.trim();
   if(!phone||phone.length<7){showToast('Enter a valid phone number','error');return;}
+  if(!loanType){showToast('Select a Loan Type','error');return;}
   try {
     const r=await fetch('/api/agent/add-interested',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({agentId:tlAgentId,phone,leadName,loanAmount,remarks})
+      body:JSON.stringify({agentId:tlAgentId,phone,leadName,loanAmount,remarks,loanType})
     });
     const d=await r.json();
     if(d.error){showToast('Error: '+d.error,'error');return;}
     showToast('Lead added successfully','success');
     ['tla-addPhone','tla-addName','tla-addAmount','tla-addRemarks'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('tla-manualLoanType').value='';
     refreshAgentLeadSections();
   } catch(e){showToast('Failed to add lead','error');}
 }
@@ -1875,6 +1895,9 @@ async function tlaRemoveInterested(numberId) {
 
 // ── Agent Mode: Doc ZIP Upload ────────────────────────────────────────────────
 let tlaDocZipNumberId=null;
+function tlaOpenLoanForm(numberId) {
+  window.open('/forms/PLJOB-main/index.html?numberId=' + encodeURIComponent(numberId) + '&agentId=' + encodeURIComponent(tlAgentId), '_blank');
+}
 function tlaOpenDocZipModal(numberId) {
   tlaDocZipNumberId=numberId;
   document.getElementById('tlaDocZipFile').value='';
