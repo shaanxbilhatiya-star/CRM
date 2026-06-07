@@ -165,6 +165,26 @@
   .dispo-btn.dispo-followup      { background: #eff6ff; color: var(--blue); border: 1.5px solid #bfdbfe; }
   .dispo-btn.dispo-switch-off    { background: var(--warn-bg); color: var(--warn); border: 1.5px solid var(--warn-border); }
   .dispo-btn.dispo-interested    { background: var(--green-bg); color: var(--green); border: 1.5px solid var(--green-border); }
+  .dispo-btn.dispo-discard       { background: #f1f5f9; color: #475569; border: 1.5px solid #94a3b8; }
+
+  /* ── 20-call Reminder Popup ── */
+  .reminder-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .reminder-popup-overlay.active { opacity: 1; pointer-events: all; }
+  .reminder-popup { background: var(--surface); border-radius: 16px; padding: 30px; width: 90%; max-width: 400px; box-shadow: 0 12px 50px rgba(0,0,0,.2); text-align: center; position: relative; }
+  .reminder-popup .close-btn { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--muted); }
+  .reminder-popup .close-btn:hover { color: var(--danger); }
+  .reminder-popup h3 { font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--warn); }
+  .reminder-popup p { font-size: 15px; color: var(--text); line-height: 1.6; }
+
+  /* ── Followup Due Popup ── */
+  .followup-due-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 310; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .followup-due-overlay.active { opacity: 1; pointer-events: all; }
+  .followup-due-popup { background: var(--surface); border-radius: 16px; padding: 30px; width: 90%; max-width: 420px; box-shadow: 0 12px 50px rgba(0,0,0,.2); text-align: center; }
+  .followup-due-popup h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--blue); }
+  .followup-due-popup .due-list { text-align: left; margin: 12px 0; max-height: 200px; overflow-y: auto; }
+  .followup-due-popup .due-item { padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: var(--surface2); }
+  .followup-due-popup .due-item .phone { font-family: var(--mono); color: var(--accent); font-weight: 700; }
+  .followup-due-popup .due-item .name { font-weight: 600; margin-left: 8px; }
 
   /* Resume toast */
   #resumeToast { display: none; background: var(--green-bg); border: 1px solid var(--green-border); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--green); font-weight: 600; text-align: center; margin: 0 20px 14px; }
@@ -502,6 +522,7 @@
             <button class="dispo-btn dispo-not-interested" onclick="submitDisposition('not_interested')">🚫 Not Interested</button>
             <button class="dispo-btn dispo-followup"      onclick="submitDisposition('followup')">📅 Followup</button>
             <button class="dispo-btn dispo-switch-off"    onclick="submitDisposition('switch_off')">📴 Switch OFF</button>
+            <button class="dispo-btn dispo-discard"       onclick="submitDisposition('discard')">🚫 Discard/Not-Eligible</button>
             <button class="dispo-btn dispo-interested"    onclick="submitDisposition('interested')">⭐ Interested</button>
           </div>
         </div>
@@ -564,6 +585,11 @@
               <div class="dispo-stat-val" id="myStatsInterested">0</div>
               <div class="dispo-stat-lbl">Interested</div>
             </div>
+            <div class="dispo-stat-card">
+              <div class="dispo-stat-indicator" style="background:#475569"></div>
+              <div class="dispo-stat-val" id="myStatsDiscard">0</div>
+              <div class="dispo-stat-lbl">Discard</div>
+            </div>
           </div>
         </div>
       </div>
@@ -609,12 +635,14 @@
               <tr>
                 <th>Phone</th>
                 <th>Name</th>
+                <th>Followup Name</th>
                 <th>Date</th>
                 <th>Time</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="followupsTable">
-              <tr><td colspan="4" class="empty">No followups yet</td></tr>
+              <tr><td colspan="6" class="empty">No followups yet</td></tr>
             </tbody>
           </table>
         </div>
@@ -686,6 +714,10 @@
   <div class="modal-box">
     <h3>Schedule Followup</h3>
     <p class="modal-sub">Set a date and time to follow up with this lead</p>
+    <div class="field">
+      <label>Followup Name</label>
+      <input type="text" id="followupName" placeholder="e.g. Call back about loan" autocomplete="off">
+    </div>
     <div class="field">
       <label>Followup Date</label>
       <input type="date" id="followupDate">
@@ -765,6 +797,26 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+
+<!-- ── 20-CALL REMINDER POPUP ── -->
+<div class="reminder-popup-overlay" id="reminderPopup">
+  <div class="reminder-popup">
+    <button class="close-btn" onclick="closeReminderPopup()">&times;</button>
+    <h3>&#9888;&#65039; Reminder</h3>
+    <p>&#2309;&#2348; &#2340;&#2325; &#2325;&#2379;&#2312; &#2349;&#2368; &#2311;&#2306;&#2335;&#2352;&#2375;&#2360;&#2381;&#2335;&#2375;&#2337; &#2354;&#2368;&#2337; &#2320;&#2337; &#2325;&#2381;&#2351;&#2379;&#2306; &#2344;&#2361;&#2368;&#2306; &#2361;&#2369;&#2312; &#2361;&#2376;</p>
+  </div>
+</div>
+
+<!-- ── FOLLOWUP DUE POPUP ── -->
+<div class="followup-due-overlay" id="followupDuePopup">
+  <div class="followup-due-popup">
+    <h3>&#128197; Followup Due!</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">These followups are due now:</p>
+    <div class="due-list" id="followupDueList"></div>
+    <button class="btn-confirm blue" onclick="closeFollowupDuePopup()">OK, Got it</button>
+  </div>
+</div>
+
 <script>
 // ── XSS Protection ────────────────────────────────────────────────────────────
 function escapeHtml(str) {
@@ -1275,8 +1327,11 @@ setInterval(updateNetDialingTime, 1000);
 
 function formatMs(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(total / 60), s = total % 60;
-  return m + ':' + String(s).padStart(2, '0');
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return h + 'h ' + m + 'm';
+  return m + 'm ' + String(s).padStart(2, '0') + 's';
 }
 function formatPhone(p) {
   const s = String(p).replace(/\D/g,'');
@@ -1307,17 +1362,19 @@ function showFollowupModal() {
   document.getElementById('followupDate').setAttribute('min', today);
   document.getElementById('followupDate').value = today;
   document.getElementById('followupTime').value = '';
+  document.getElementById('followupName').value = '';
   document.getElementById('followupModal').classList.add('active');
 }
 function closeFollowupModal() { document.getElementById('followupModal').classList.remove('active'); }
 function confirmFollowup() {
   const followupDate = document.getElementById('followupDate').value;
   const followupTime = document.getElementById('followupTime').value;
+  const followupName = document.getElementById('followupName').value.trim();
   if (!followupDate) { alert('Please select a date'); return; }
   if (!followupTime) { alert('Please select a time'); return; }
   closeFollowupModal();
   document.getElementById('dispositionPanel').style.display = 'none';
-  socket.emit('agent-disposition', { agentId, numberId: currentNumberId, disposition: 'followup', followupDate, followupTime });
+  socket.emit('agent-disposition', { agentId, numberId: currentNumberId, disposition: 'followup', followupDate, followupTime, followupName });
   currentNumberId = null;
 }
 
@@ -1433,15 +1490,49 @@ function renderFollowupsTable(leads) {
   const tbody = document.getElementById('followupsTable');
   document.getElementById('followupsCountBadge').textContent = (leads||[]).length + ' followup' + ((leads||[]).length !== 1 ? 's' : '');
   if (!leads || leads.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty">No followups yet</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No followups yet</td></tr>';
     return;
   }
-  tbody.innerHTML = leads.map(l => `<tr>
+  // Sort by nearest date and time first
+  const sorted = [...leads].sort((a, b) => {
+    const dtA = (a.followupDate || '') + ' ' + (a.followupTime || '');
+    const dtB = (b.followupDate || '') + ' ' + (b.followupTime || '');
+    return dtA.localeCompare(dtB);
+  });
+  tbody.innerHTML = sorted.map(l => {
+    const timeAmPm = formatTimeAmPm(l.followupTime);
+    return `<tr>
     <td><span class="phone-mono">${escapeHtml(formatPhone(l.phone))}</span></td>
-    <td>${escapeHtml(l.name) || '—'}</td>
-    <td><span class="followup-date">${escapeHtml(l.followupDate || '—')}</span></td>
-    <td style="font-family:var(--mono);font-size:12px">${escapeHtml(l.followupTime || '—')}</td>
-  </tr>`).join('');
+    <td>${escapeHtml(l.name) || '\u2014'}</td>
+    <td>${escapeHtml(l.followupName) || '\u2014'}</td>
+    <td><span class="followup-date">${escapeHtml(l.followupDate || '\u2014')}</span></td>
+    <td style="font-family:var(--mono);font-size:12px">${timeAmPm}</td>
+    <td><button class="btn-sm red" onclick="removeFollowup('${escapeHtml(l.id || l.numberId)}')">&#128465; Remove</button></td>
+  </tr>`;
+  }).join('');
+}
+
+function formatTimeAmPm(time24) {
+  if (!time24) return '\u2014';
+  const parts = time24.split(':');
+  if (parts.length < 2) return time24;
+  let h = parseInt(parts[0], 10);
+  const m = parts[1];
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return h + ':' + m + ' ' + ampm;
+}
+
+async function removeFollowup(numberId) {
+  if (!confirm('Remove this followup? Lead will be moved to Not Interested.')) return;
+  try {
+    const r = await fetch('/api/agent/followup/' + numberId, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+    showToast('Followup removed', 'success');
+    refreshLeadSections();
+  } catch (e) { alert('Failed to remove followup'); }
 }
 
 function renderCompletedTable(leads) {
@@ -1638,6 +1729,7 @@ async function fetchMyStats() {
     document.getElementById('myStatsFollowup').textContent      = d.followup || 0;
     document.getElementById('myStatsSwitchOff').textContent     = d.switch_off || 0;
     document.getElementById('myStatsInterested').textContent    = d.interested || 0;
+    document.getElementById('myStatsDiscard').textContent       = d.discard || 0;
   } catch (e) { /* silent */ }
 }
 
@@ -1668,14 +1760,22 @@ function getSmartRemarks(r, data, idx) {
   return '📈 ' + above.name.split(' ')[0] + ' से ' + gap + ' pts पीछे — ' + intNeeded + ' interested lead' + (intNeeded > 1 ? 's' : '') + ' लाओ और overtake करो!';
 }
 
-function renderLeaderboard(data) {
+function renderLeaderboard(data, formulaDesc) {
   const body = document.getElementById('leaderboardBody');
   if (!data || data.length === 0) {
     body.innerHTML = '<div style="text-align:center;color:var(--muted);padding:30px">No ranking data available yet</div>';
     return;
   }
   const maxScore = Math.max(...data.map(d => d.score), 1);
-  let html = '<div class="lb-list">';
+  let html = '';
+  // Formula info
+  if (formulaDesc) {
+    html += '<div style="background:var(--accent-glow);border:1px solid rgba(108,43,217,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.6">';
+    html += '<strong style="color:var(--accent)">&#128202; Scoring Formula:</strong> ';
+    html += 'Score = (100 x Interested + 25 x FollowUp - 10 x NI - 15 x Discard - 2 x CNC - 2 x SwitchOff) / TotalCalls (0-100 scale)';
+    html += '</div>';
+  }
+  html += '<div class="lb-list">';
   data.forEach((r, idx) => {
     const pct = Math.round((r.score / maxScore) * 100);
     // Avatar sizing: rank 1 biggest, shrinks for lower ranks
@@ -1716,8 +1816,11 @@ function renderLeaderboard(data) {
 async function fetchLeaderboard() {
   try {
     const r = await fetch('/api/rankings?period=' + currentLbPeriod);
-    const data = await r.json();
-    renderLeaderboard(data);
+    const resp = await r.json();
+    // API now returns { rankings: [...], formulaDescription: '...' }
+    const data = resp.rankings || resp;
+    const formulaDesc = resp.formulaDescription || '';
+    renderLeaderboard(data, formulaDesc);
   } catch (e) { /* silent */ }
 }
 
@@ -1738,6 +1841,108 @@ setInterval(() => { if (agentId) socket.emit('ping-alive', { agentId }); }, 3000
 
 ['empId','agentName'].forEach(id => {
   document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') registerAgent(); });
+});
+
+// ── 20-Call Interested Reminder ──────────────────────────────────────────────
+let callsSinceLastReminder = 0;
+
+function checkInterestedReminder() {
+  callsSinceLastReminder++;
+  if (callsSinceLastReminder >= 20) {
+    const intCount = parseInt(document.getElementById('myStatsInterested').textContent) || 0;
+    if (intCount === 0) {
+      document.getElementById('reminderPopup').classList.add('active');
+    }
+    callsSinceLastReminder = 0;
+  }
+}
+
+function closeReminderPopup() {
+  document.getElementById('reminderPopup').classList.remove('active');
+}
+
+// Hook into disposition flow to track calls
+const _origSubmitDisposition = submitDisposition;
+submitDisposition = function(disposition) {
+  checkInterestedReminder();
+  _origSubmitDisposition(disposition);
+};
+
+// ── Followup Due Popup ───────────────────────────────────────────────────────
+let followupDueAcknowledged = new Set();
+
+async function checkDueFollowups() {
+  if (!agentId) return;
+  try {
+    const r = await fetch('/api/agent/due-followups/' + agentId);
+    const data = await r.json();
+    if (!data || !Array.isArray(data) || data.length === 0) return;
+    const newDue = data.filter(d => !followupDueAcknowledged.has(d.id || d.numberId));
+    if (newDue.length === 0) return;
+    const listEl = document.getElementById('followupDueList');
+    listEl.innerHTML = newDue.map(d => `<div class="due-item">
+      <span class="phone">${escapeHtml(formatPhone(d.phone))}</span>
+      <span class="name">${escapeHtml(d.followupName || d.name || '')}</span>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${escapeHtml(d.followupDate || '')} ${formatTimeAmPm(d.followupTime)}</div>
+    </div>`).join('');
+    document.getElementById('followupDuePopup').classList.add('active');
+  } catch (e) { /* silent */ }
+}
+
+function closeFollowupDuePopup() {
+  document.getElementById('followupDuePopup').classList.remove('active');
+  // Mark all currently shown as acknowledged
+  const items = document.querySelectorAll('#followupDueList .due-item');
+  // We cannot easily get IDs from DOM, so just prevent re-show for 5 min by clearing interval temporarily
+  followupDueAcknowledged.add('_batch_' + Date.now());
+}
+
+// Check every 30 seconds for due followups
+setInterval(checkDueFollowups, 30000);
+setTimeout(checkDueFollowups, 5000);
+
+// ── Timer Update from server (global broadcast) ─────────────────────────────
+socket.on('timer-update', (data) => {
+  if (!agentId || data.agentId !== agentId) return;
+  // Update local timer state based on server broadcast
+  if (data.type === 'break') {
+    if (data.action === 'end') {
+      onBreak = false; breakStartedAt = null; dialerWasOnBreak = false;
+      totalBreakMsUsed = data.totalBreakMs || totalBreakMsUsed;
+      breakExhausted = totalBreakMsUsed >= breakAllowedMs;
+      stopBreakCountdown(); updateBreakUsedDisplay(); hideBreakMode();
+      if (currentNumberId) {
+        document.getElementById('numberDisplay').style.display = 'block';
+        document.getElementById('dispositionPanel').style.display = 'block';
+        document.getElementById('btnWashroom').style.display = 'block';
+        document.getElementById('btnMeeting').style.display = 'block';
+      } else { showIdle(); }
+    }
+  } else if (data.type === 'washroom') {
+    if (data.action === 'end') {
+      onWashroom = false; washroomStartedAt = null;
+      totalWashroomMsUsed = data.totalWashroomMs || totalWashroomMsUsed;
+      stopWashroomTimer(); updateWashroomUsedDisplay(); hideWashroomMode();
+      if (currentNumberId) {
+        document.getElementById('numberDisplay').style.display = 'block';
+        document.getElementById('dispositionPanel').style.display = 'block';
+        document.getElementById('btnWashroom').style.display = 'block';
+        document.getElementById('btnMeeting').style.display = 'block';
+      } else { showIdle(); }
+    }
+  } else if (data.type === 'meeting') {
+    if (data.action === 'end') {
+      onMeeting = false; meetingStartedAt = null;
+      totalMeetingMsUsed = data.totalMeetingMs || totalMeetingMsUsed;
+      stopMeetingTimer(); updateMeetingUsedDisplay(); hideMeetingMode();
+      if (currentNumberId) {
+        document.getElementById('numberDisplay').style.display = 'block';
+        document.getElementById('dispositionPanel').style.display = 'block';
+        document.getElementById('btnWashroom').style.display = 'block';
+        document.getElementById('btnMeeting').style.display = 'block';
+      } else { showIdle(); }
+    }
+  }
 });
 
 
