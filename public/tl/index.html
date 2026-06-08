@@ -5,45 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ruralift CRM &#8212; TL Panel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* TL theme: black + indigo/violet (slightly different from Admin's deep-purple) */
-    --bg: #0e0e1a; --surface: #16162a; --surface2: #1c1c35; --border: #2a2a50;
-    --accent: #6366f1; --accent2: #818cf8; --danger: #ef4444;
-    --warn: #f59e0b; --text: #e2e8f0; --muted: #9ca3af;
-    --green: #10b981; --tl: #a78bfa; --tl2: #c4b5fd;
+    /* TL Mode mirrors the Admin panel exactly: pure black + deep-purple */
+    --bg: #080810; --surface: #100f1e; --surface2: #17162a; --border: #25233d;
+    --accent: #7c3aed; --accent2: #9333ea; --danger: #F44336;
+    --warn: #FF9800; --text: #E0E0E0; --muted: #9E9E9E;
+    --green: #4CAF50; --tl: #7c3aed; --tl2: #9333ea; --blue: #2563eb;
+    --border-strong: #2f2c4a;
     --mono: 'JetBrains Mono', monospace; --sans: 'Space Grotesk', sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
 
   header {
-    background: linear-gradient(135deg, #0e0e1a 0%, #14142b 100%);
+    background: linear-gradient(135deg, #080810 0%, #100f1e 100%);
     border-bottom: 1px solid var(--border);
     padding: 14px 32px;
     display: flex; align-items: center; justify-content: space-between;
     position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 2px 20px rgba(163,139,250,.15);
+    box-shadow: 0 2px 20px rgba(124,58,237,.2);
   }
   .header-left { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; justify-content: center; }
   .logo-img {
     width: 272px; height: 70px; object-fit: contain; padding: 10px 18px; border-radius: 14px;
-    border: 2px solid rgba(163,139,250,.4); background: rgba(255,255,255,.05);
-    filter: drop-shadow(0 0 12px rgba(163,139,250,.6)) drop-shadow(0 0 24px rgba(163,139,250,.3));
+    border: 2px solid rgba(124,58,237,.4); background: rgba(255,255,255,.04);
+    filter: drop-shadow(0 0 12px rgba(124,58,237,.65)) drop-shadow(0 0 24px rgba(124,58,237,.3));
     animation: logo-glow 2.5s ease-in-out infinite;
-    box-shadow: 0 4px 16px rgba(163,139,250,.15), 0 1px 4px rgba(0,0,0,.2);
+    box-shadow: 0 4px 16px rgba(124,58,237,.2), 0 1px 4px rgba(0,0,0,.3);
   }
   @keyframes logo-glow {
-    0%,100% { filter: drop-shadow(0 0 8px rgba(163,139,250,.5)) drop-shadow(0 0 16px rgba(163,139,250,.25)); }
-    50%      { filter: drop-shadow(0 0 18px rgba(163,139,250,.9)) drop-shadow(0 0 36px rgba(163,139,250,.5)); }
+    0%,100% { filter: drop-shadow(0 0 8px rgba(124,58,237,.55)) drop-shadow(0 0 18px rgba(124,58,237,.25)); }
+    50%      { filter: drop-shadow(0 0 20px rgba(124,58,237,.95)) drop-shadow(0 0 40px rgba(147,51,234,.55)); }
   }
-  .header-brand { font-size: 15px; font-weight: 700; color: var(--tl); letter-spacing: -.3px; text-shadow: 0 0 10px rgba(167,139,250,.5); }
+  .header-brand { font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: -.3px; text-shadow: 0 0 10px rgba(124,58,237,.5); }
   .header-right { display: flex; align-items: center; gap: 12px; }
   .header-left-corner { display: flex; align-items: center; }
-  .badge-tl { background: var(--tl); color: #0e0e1a; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; box-shadow: 0 0 10px rgba(167,139,250,.4); }
-  .badge-agent { background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; }
-  .today-badge { background: rgba(163,139,250,.12); color: var(--tl); border: 1px solid rgba(163,139,250,.25); border-radius: 6px; padding: 4px 12px; font-size: 12px; font-family: var(--mono); }
+  .badge-tl { background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; box-shadow: 0 0 10px rgba(124,58,237,.4); }
+  .badge-agent { background: var(--accent2); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 1px; }
+  .today-badge { background: rgba(124,58,237,.1); color: var(--accent); border: 1px solid rgba(124,58,237,.2); border-radius: 6px; padding: 4px 12px; font-size: 12px; font-family: var(--mono); }
 
   /* Mode Buttons (replaced toggle) */
   .mode-btn-wrap { display: none; align-items: center; gap: 8px; }
@@ -53,30 +54,30 @@
     letter-spacing: .5px;
   }
   .mode-btn.agent-btn {
-    background: rgba(99,102,241,.1); color: var(--accent2);
-    border-color: rgba(99,102,241,.3);
+    background: rgba(147,51,234,.12); color: var(--accent2);
+    border-color: rgba(147,51,234,.3);
   }
   .mode-btn.agent-btn.active {
-    background: var(--accent); color: #fff; border-color: var(--accent);
-    box-shadow: 0 0 14px rgba(99,102,241,.6), 0 0 28px rgba(99,102,241,.3);
+    background: var(--accent2); color: #fff; border-color: var(--accent2);
+    box-shadow: 0 0 14px rgba(147,51,234,.6), 0 0 28px rgba(147,51,234,.3);
     animation: btn-pulse-agent 2s ease-in-out infinite;
   }
   .mode-btn.tl-btn {
-    background: rgba(167,139,250,.1); color: var(--tl);
-    border-color: rgba(167,139,250,.3);
+    background: rgba(124,58,237,.12); color: var(--accent);
+    border-color: rgba(124,58,237,.3);
   }
   .mode-btn.tl-btn.active {
-    background: var(--tl); color: #0e0e1a; border-color: var(--tl);
-    box-shadow: 0 0 14px rgba(167,139,250,.6), 0 0 28px rgba(167,139,250,.3);
+    background: var(--accent); color: #fff; border-color: var(--accent);
+    box-shadow: 0 0 14px rgba(124,58,237,.6), 0 0 28px rgba(124,58,237,.3);
     animation: btn-pulse-tl 2s ease-in-out infinite;
   }
   @keyframes btn-pulse-agent {
-    0%,100%{ box-shadow: 0 0 10px rgba(99,102,241,.5), 0 0 20px rgba(99,102,241,.25); }
-    50%    { box-shadow: 0 0 20px rgba(99,102,241,.9), 0 0 40px rgba(99,102,241,.5); }
+    0%,100%{ box-shadow: 0 0 10px rgba(147,51,234,.5), 0 0 20px rgba(147,51,234,.25); }
+    50%    { box-shadow: 0 0 20px rgba(147,51,234,.9), 0 0 40px rgba(147,51,234,.5); }
   }
   @keyframes btn-pulse-tl {
-    0%,100%{ box-shadow: 0 0 10px rgba(167,139,250,.5), 0 0 20px rgba(167,139,250,.25); }
-    50%    { box-shadow: 0 0 20px rgba(167,139,250,.9), 0 0 40px rgba(167,139,250,.5); }
+    0%,100%{ box-shadow: 0 0 10px rgba(124,58,237,.5), 0 0 20px rgba(124,58,237,.25); }
+    50%    { box-shadow: 0 0 20px rgba(124,58,237,.9), 0 0 40px rgba(124,58,237,.5); }
   }
 
   /* Login screen */
@@ -91,18 +92,18 @@
     border: 1px solid var(--border);
     border-radius: 20px;
     padding: 40px;
-    box-shadow: 0 4px 40px rgba(167,139,250,.12);
+    box-shadow: 0 4px 40px rgba(124,58,237,.12);
   }
-  .login-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(167,139,250,.12); color: var(--tl); border: 1px solid rgba(167,139,250,.25); border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 700; margin-bottom: 20px; }
+  .login-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(124,58,237,.12); color: var(--tl); border: 1px solid rgba(124,58,237,.25); border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 700; margin-bottom: 20px; }
   .login-card h2 { font-size: 24px; font-weight: 800; margin-bottom: 4px; color: var(--text); }
   .login-card .sub { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
   .field { margin-bottom: 18px; }
   .field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 7px; }
   .field input { width: 100%; padding: 12px 16px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: var(--sans); font-size: 15px; outline: none; transition: border-color .2s; }
-  .field input:focus { border-color: var(--tl); background: rgba(167,139,250,.05); }
+  .field input:focus { border-color: var(--tl); background: rgba(124,58,237,.05); }
   .field input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
   .err { color: var(--danger); font-size: 12px; margin-top: 5px; display: none; }
-  .btn-login { width: 100%; padding: 14px; border-radius: 12px; border: none; background: linear-gradient(135deg, #6d28d9, var(--tl)); color: #fff; font-family: var(--sans); font-size: 16px; font-weight: 700; cursor: pointer; transition: all .2s; margin-top: 4px; box-shadow: 0 4px 14px rgba(167,139,250,.3); }
+  .btn-login { width: 100%; padding: 14px; border-radius: 12px; border: none; background: linear-gradient(135deg, #6d28d9, var(--tl)); color: #fff; font-family: var(--sans); font-size: 16px; font-weight: 700; cursor: pointer; transition: all .2s; margin-top: 4px; box-shadow: 0 4px 14px rgba(124,58,237,.3); }
   .btn-login:hover { filter: brightness(1.1); transform: translateY(-1px); }
 </style>
 
@@ -117,7 +118,7 @@
 
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 24px; }
   .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; display: flex; flex-direction: column; gap: 5px; box-shadow: 0 2px 12px rgba(0,0,0,.3); transition: transform .2s, box-shadow .2s; }
-  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(167,139,250,.15); }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(124,58,237,.15); }
   .stat-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .8px; text-transform: uppercase; }
   .stat-value { font-family: var(--mono); font-size: 32px; font-weight: 700; }
   .stat-value.tl { color: var(--tl); }
@@ -137,7 +138,7 @@
   .agents-table th, .leads-table th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); background: var(--surface2); }
   .agents-table td, .leads-table td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text); }
   .agents-table tr:last-child td, .leads-table tr:last-child td { border-bottom: none; }
-  .agents-table tr:hover td { background: rgba(167,139,250,.04); }
+  .agents-table tr:hover td { background: rgba(124,58,237,.04); }
   .phone-number { font-family: var(--mono); font-weight: 700; color: var(--tl); }
   .dialed-count { font-family: var(--mono); font-weight: 700; color: var(--tl); }
   .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 24px; }
@@ -155,10 +156,10 @@
   .login-absent { color: var(--muted); font-size: 13px; }
 
   .btn-sm { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--sans); transition: all .2s; border: none; }
-  .btn-sm.tl { background: rgba(167,139,250,.12); color: var(--tl); border: 1px solid rgba(167,139,250,.3); }
+  .btn-sm.tl { background: rgba(124,58,237,.12); color: var(--tl); border: 1px solid rgba(124,58,237,.3); }
   .btn-sm.danger { background: rgba(239,68,68,.1); color: var(--danger); border: 1px solid rgba(239,68,68,.3); }
   .btn-sm:hover { filter: brightness(1.15); }
-  .loan-type-pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(167,139,250,.1); color: var(--tl); border: 1px solid rgba(167,139,250,.25); }
+  .loan-type-pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(124,58,237,.1); color: var(--tl); border: 1px solid rgba(124,58,237,.25); }
 
   /* Break summary */
   #breakSummary { display: none; background: rgba(245,158,11,.05); border: 1px solid rgba(245,158,11,.2); border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; }
@@ -172,7 +173,7 @@
   .admin-stats-tab.active { background: var(--tl); color: #0e0e1a; border-color: var(--tl); }
   .dispo-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
   .dispo-stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; position: relative; }
-  .dispo-stat-card.dispo-stat-total { background: rgba(167,139,250,.08); border-color: rgba(167,139,250,.3); }
+  .dispo-stat-card.dispo-stat-total { background: rgba(124,58,237,.08); border-color: rgba(124,58,237,.3); }
   .dispo-stat-indicator { width: 8px; height: 8px; border-radius: 50%; position: absolute; top: 10px; left: 10px; }
   .dispo-stat-val { font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--tl); }
   .dispo-stat-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 4px; }
@@ -201,17 +202,17 @@
   .modal-actions .btn-confirm { padding: 9px 18px; border-radius: 8px; border: none; background: var(--tl); color: #0e0e1a; font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--sans); }
 
   /* Leaderboard */
-  .leaderboard-panel { margin-bottom: 22px; border-radius: 20px; overflow: hidden; border: 1px solid rgba(167,139,250,.3); background: var(--surface); box-shadow: 0 4px 30px rgba(167,139,250,.1); }
-  .leaderboard-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; background: linear-gradient(135deg, #1e1b4b 0%, #3730a3 50%, #4f46e5 100%); flex-wrap: wrap; gap: 10px; }
+  .leaderboard-panel { margin-bottom: 22px; border-radius: 20px; overflow: hidden; border: 1px solid rgba(124,58,237,.3); background: var(--surface); box-shadow: 0 8px 40px rgba(124,58,237,.12); }
+  .leaderboard-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; background: linear-gradient(135deg, #1a0a2e 0%, #4a1d96 50%, #7c3aed 100%); flex-wrap: wrap; gap: 10px; }
   .leaderboard-header h2 { margin: 0; font-size: 18px; color: #fff; font-weight: 800; animation: lb-glow 2s ease-in-out infinite; }
-  @keyframes lb-glow { 0%,100%{text-shadow:0 0 10px rgba(196,181,253,.5)} 50%{text-shadow:0 0 25px rgba(196,181,253,1),0 0 50px rgba(167,139,250,.6)} }
+  @keyframes lb-glow { 0%,100%{text-shadow:0 0 10px rgba(124,58,237,.5)} 50%{text-shadow:0 0 25px rgba(124,58,237,1),0 0 50px rgba(147,51,234,.6)} }
   .lb-period-tabs { display: flex; gap: 4px; background: rgba(255,255,255,.1); padding: 4px; border-radius: 8px; }
   .lb-period-tab { padding: 5px 14px; border-radius: 6px; border: none; background: transparent; color: rgba(255,255,255,.6); font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; }
-  .lb-period-tab.active { background: var(--tl); color: #0e0e1a; }
-  .leaderboard-body { padding: 18px 22px 22px; background: linear-gradient(180deg, rgba(167,139,250,.08) 0%, var(--bg) 70px); }
+  .lb-period-tab.active { background: var(--accent); color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,.5); }
+  .leaderboard-body { padding: 18px 22px 22px; background: linear-gradient(180deg, #12102a 0%, #080810 80px); }
   .lb-list { display: flex; flex-direction: column; gap: 7px; }
   .lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); transition: all .2s; }
-  .lb-row:hover { border-color: var(--tl2); box-shadow: 0 3px 14px rgba(167,139,250,.15); transform: translateX(2px); }
+  .lb-row:hover { border-color: var(--tl2); box-shadow: 0 3px 14px rgba(124,58,237,.15); transform: translateX(2px); }
   .lb-rank-badge { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: var(--surface2); color: var(--muted); border: 1.5px solid var(--border); flex-shrink: 0; font-family: var(--mono); text-align: center; line-height: 1.2; }
   .lb-rank-badge.top3 { background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #f59e0b; font-size: 15px; width: 36px; height: 36px; }
   .lb-row-avatar { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #fff; background: var(--tl); overflow: hidden; flex-shrink: 0; border: 2px solid var(--border); }
@@ -233,7 +234,7 @@
   #connBanner.reconnecting { background: rgba(245,158,11,.1); color: var(--warn); border-bottom: 1px solid rgba(245,158,11,.3); display: block; }
   #connBanner.reconnected { background: rgba(16,185,129,.1); color: var(--green); border-bottom: 1px solid rgba(16,185,129,.3); display: block; }
 
-  .dialer-panel { border: 2px solid var(--tl2); box-shadow: 0 4px 20px rgba(167,139,250,.12); }
+  .dialer-panel { border: 2px solid var(--tl2); box-shadow: 0 4px 20px rgba(124,58,237,.12); }
   .number-block { text-align: center; padding: 20px 16px; }
   .number-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
   .lead-name { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 8px; min-height: 26px; }
@@ -307,10 +308,13 @@
 <style id="agentModeTheme">
   body.agent-mode-theme {
     --bg: #f4f6f9; --surface: #ffffff; --surface2: #f8fafc; --border: #e2e8f0;
+    --border-strong: #cbd5e1;
     --accent: #6c2bd9; --accent2: #8b5cf6; --danger: #dc2626;
-    --warn: #d97706; --text: #1a202c; --muted: #64748b;
+    --warn: #d97706; --text: #1a202c; --muted: #64748b; --blue: #2563eb;
     --green: #059669; --tl: #6c2bd9; --tl2: #8b5cf6;
+    --sans: 'DM Sans', sans-serif;
     background: #f4f6f9;
+    font-family: 'DM Sans', sans-serif;
   }
   body.agent-mode-theme header {
     background: #ffffff !important; border-bottom-color: #e2e8f0 !important;
@@ -330,6 +334,8 @@
   body.agent-mode-theme input:focus, body.agent-mode-theme select:focus, body.agent-mode-theme textarea:focus {
     border-color: #8b5cf6 !important; background: #fff !important;
   }
+  body.agent-mode-theme .leaderboard-panel { border-color: rgba(108,43,217,.2) !important; box-shadow: 0 8px 40px rgba(108,43,217,.08) !important; }
+  body.agent-mode-theme .leaderboard-header { background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%) !important; }
   body.agent-mode-theme .leaderboard-body { background: linear-gradient(180deg, #ede9fe 0%, #f4f6f9 80px) !important; }
   body.agent-mode-theme .lb-row { background: #fff !important; border-color: #e2e8f0 !important; }
   body.agent-mode-theme .lb-row:hover { border-color: #8b5cf6 !important; box-shadow: 0 4px 16px rgba(108,43,217,.1) !important; }
@@ -357,7 +363,7 @@
     <span class="header-brand">Ruralift CRM</span>
   </div>
   <div class="header-right">
-    <button id="btnLogoutTL" onclick="logoutTL()" style="display:none;background:none;border:1px solid rgba(163,139,250,.3);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)">Logout</button>
+    <button id="btnLogoutTL" onclick="logoutTL()" style="display:none;background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--sans)">Logout</button>
     <span class="today-badge" id="todayBadge">&#8212;</span>
     <div class="mode-btn-wrap" id="modeToggleWrap">
       <button class="mode-btn agent-btn" id="btnAgentMode" onclick="setMode(false)">&#128100; Agent Mode</button>
@@ -412,7 +418,7 @@
       <div class="stat-card"><span class="stat-label">Followups</span><span class="stat-value blue" id="tlStatFollowups">0</span></div>
     </div>
     <div class="panel" style="margin-bottom:20px">
-      <div class="panel-header" style="background:rgba(167,139,250,.06);flex-wrap:wrap;gap:10px">
+      <div class="panel-header" style="background:rgba(124,58,237,.06);flex-wrap:wrap;gap:10px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1">
           <h2 style="color:var(--tl);margin:0">&#128202; Disposition Stats</h2>
           <select id="tlStatsAgentFilter" onchange="onTLAgentFilterChange()"
@@ -449,7 +455,7 @@
 
     <!-- Active Agents Panel -->
     <div class="panel" style="margin-bottom:22px">
-      <div class="panel-header" style="background:rgba(167,139,250,.06)"><h2 style="color:var(--tl)">&#128101; Active Agents</h2><span id="agentCount" style="font-size:12px;color:var(--muted)">0 agents</span></div>
+      <div class="panel-header" style="background:rgba(124,58,237,.06)"><h2 style="color:var(--tl)">&#128101; Active Agents</h2><span id="agentCount" style="font-size:12px;color:var(--muted)">0 agents</span></div>
       <div class="panel-body" style="padding:0;overflow-x:auto">
         <table class="agents-table">
           <thead>
@@ -485,7 +491,7 @@
 
     <!-- Documentation Completed Panel -->
     <div class="panel" style="margin-bottom:20px;border-top:3px solid var(--tl)">
-      <div class="panel-header" style="background:rgba(167,139,250,.06)">
+      <div class="panel-header" style="background:rgba(124,58,237,.06)">
         <h2 style="color:var(--tl)">&#9989; Documentation Completed</h2>
         <span style="font-size:12px;color:var(--muted)" id="completedCountBadge">0 leads</span>
       </div>
@@ -617,7 +623,7 @@
 
       <!-- My Disposition Stats Panel -->
       <div class="panel">
-        <div class="panel-header" style="background:rgba(167,139,250,.06);flex-wrap:wrap;gap:10px">
+        <div class="panel-header" style="background:rgba(124,58,237,.06);flex-wrap:wrap;gap:10px">
           <h2 style="color:var(--tl);margin:0">&#128202; My Disposition Stats</h2>
           <div class="admin-stats-tabs" id="tla-dispo-tabs">
             <button class="admin-stats-tab active" data-tla-dispo="daily" onclick="switchAgentDispoPeriod('daily')">Daily</button>
@@ -674,7 +680,7 @@
 
       <!-- Add Interested Lead Manually -->
       <div class="panel">
-        <div class="panel-header" style="background:rgba(167,139,250,.06)">
+        <div class="panel-header" style="background:rgba(124,58,237,.06)">
           <h2 style="color:var(--tl)">&#10133; Add Interested Lead Manually</h2>
         </div>
         <div class="panel-body">
@@ -695,7 +701,7 @@
 
     <!-- COMPLETED LEADS (full width) -->
     <div class="panel" style="margin-bottom:20px;border-top:3px solid var(--tl)">
-      <div class="panel-header" style="background:rgba(167,139,250,.06)">
+      <div class="panel-header" style="background:rgba(124,58,237,.06)">
         <h2 style="color:var(--tl)">&#9989; Documentation Completed</h2>
         <span style="font-size:12px;color:var(--muted)" id="tla-completedCount">0 leads</span>
       </div>
@@ -1422,7 +1428,7 @@ function renderTLLeaderboard(data, formulaDesc) {
   if(!data||!data.length){body.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">No data yet</div>';return;}
   let html='';
   if (formulaDesc) {
-    html+='<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.6">';
+    html+='<div style="background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.6">';
     html+='<strong style="color:var(--tl)">&#128202; Scoring Formula:</strong> '+escapeHtml(formulaDesc)+'</div>';
   }
   const maxS=Math.max(...data.map(d=>d.score),1);
@@ -1590,7 +1596,7 @@ function renderAgentLeaderboard(data, formulaDesc) {
   if(!data||!data.length){body.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px">No data yet</div>';return;}
   let html='';
   if (formulaDesc) {
-    html+='<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.6">';
+    html+='<div style="background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.6">';
     html+='<strong style="color:var(--tl)">&#128202; Scoring Formula:</strong> '+escapeHtml(formulaDesc)+'</div>';
   }
   const maxS=Math.max(...data.map(d=>d.score),1);
