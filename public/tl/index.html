@@ -2952,6 +2952,8 @@ function hideTlForbiddenSections() {
 }
 
 function fetchTlData() {
+  // Fetch initial admin stats to populate stat cards and active agents table
+  fetch('/api/admin/stats').then(r => r.json()).then(d => tlRenderStats(d)).catch(() => {});
   // These functions are defined in admin JS below
   if (typeof fetchInterestedLeads === 'function') fetchInterestedLeads();
   if (typeof fetchFollowups === 'function') fetchFollowups();
@@ -3017,7 +3019,7 @@ socket.on('reconnect_failed', () => showAdminBanner('disconnected', '❌ Could n
 
 socket.emit('join-admin');
 
-socket.on('stats-update', renderStats);
+socket.on('stats-update', tlRenderStats);
 socket.on('force-stop', () => tlShowToast('All agents stopped', 'warn'));
 socket.on('timer-update', () => {
   // Refresh stats when timer state changes
