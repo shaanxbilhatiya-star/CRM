@@ -119,6 +119,11 @@ function checkDailyReset(state) {
         }
       }
     });
+    // Trim dialedLog: remove entries older than 90 days to prevent unbounded growth
+    const cutoffDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    if (state.dialedLog && state.dialedLog.length > 0) {
+      state.dialedLog = state.dialedLog.filter(entry => entry.timestamp && entry.timestamp >= cutoffDate);
+    }
     state.lastReset = today;
     saveState(state);
   }
@@ -155,7 +160,6 @@ setInterval(() => {
 // ─── Number helpers ───────────────────────────────────────────────────────────
 function getNextNumber(agentId) {
   appState = checkDailyReset(appState);
-  const now = new Date();
   const today = getTodayStr();
   const undialed = appState.numbers.find(n => {
     if (n.dialedBy || n.assignedTo) return false;
@@ -940,6 +944,7 @@ app.post('/api/agent/remove-interested', (req, res) => {
   if (num.disposition !== 'interested') return res.status(400).json({ error: 'Number is not marked as interested' });
   if (num.interestedBy !== agentId) return res.status(403).json({ error: 'This lead is not assigned to you' });
   num.disposition = 'dead';
+  num.permanent = true;
   saveState(appState);
   broadcastAdminStats();
   res.json({ success: true });
@@ -953,6 +958,7 @@ app.post('/api/admin/remove-interested', (req, res) => {
   const num = appState.numbers.find(n => n.id === numberId);
   if (!num) return res.status(404).json({ error: 'Number not found' });
   num.disposition = 'dead';
+  num.permanent = true;
   saveState(appState);
   broadcastAdminStats();
   res.json({ success: true });
