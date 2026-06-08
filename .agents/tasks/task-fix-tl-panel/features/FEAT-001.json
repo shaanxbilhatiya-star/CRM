@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Create the new tl/index.html with the complete structure: HTML head with both themes (light for agent mode, dark for TL mode), all CSS styles for both modes, login screen, agent mode screen (copied from agent.html), TL mode screen (from admin.html limited sections), and all modals. Then add the JavaScript for login, mode switching, agent mode logic, and TL mode logic.",
+  "status": "in_progress",
+  "steps": [
+    "Read the complete agent/index.html and admin/index.html to understand all features",
+    "Delete existing public/tl/index.html",
+    "Create a new public/tl/index.html that combines: (1) Agent mode = exact clone of agent.html features/UI with light theme, (2) TL mode = admin.html dark theme but only with allowed sections (Agent Rankings, stats cards for Interested/Overdue/Followups, Disposition Stats, Active Agents, Interested Leads, Documentation Completed, Followups), (3) Login screen that validates TL role, (4) Mode switching with TL time tracking",
+    "The doc ZIP upload modal in agent mode must work with drag-drop, progress bar, and proper XHR upload",
+    "Verify the file has no JS syntax errors and contains all required sections"
+  ],
+  "acceptance_criteria": [
+    "File exists and is valid HTML with no JS syntax errors",
+    "Agent mode has all features from agent.html including doc ZIP upload with drag-drop and progress",
+    "TL mode has exactly the 9 allowed sections from admin.html with dark theme",
+    "Login validates TL role, mode toggle works, session persists in sessionStorage"
+  ],
+  "verification": [
+    "node -e \"const fs=require('fs'); const html=fs.readFileSync('public/tl/index.html','utf8'); console.log('Size:', html.length); console.log('Has login:', html.includes('loginScreen')); console.log('Has agent:', html.includes('agentScreen')); console.log('Has TL:', html.includes('tlScreen')); console.log('Has docZip:', html.includes('docZip'));\"",
+    "cd /projects/sandbox/CRM && npm install"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
