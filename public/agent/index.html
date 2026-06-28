@@ -2076,7 +2076,7 @@ showNumber = function(numberId, phone, name, totalDialedToday, resumed) {
 
 // ── DND Manual Management ─────────────────────────────────────────────────────
 async function loadDndNumbers() {
-  try { const r = await fetch('/api/dnd'); const d = await r.json(); renderDndNumbers(d.dndNumbers || []); } catch(e) {}
+  try { const r = await fetch('/api/admin/dnd'); const d = await r.json(); renderDndNumbers(d.dndNumbers || []); } catch(e) {}
 }
 function renderDndNumbers(list) {
   const el = document.getElementById('dndNumbersList'); const badge = document.getElementById('dndCountBadge');
@@ -2089,7 +2089,7 @@ async function addDndManually() {
   const phone = input.value.trim().replace(/\s+/g,'');
   if (!phone || !/^\d{7,15}$/.test(phone)) { showToast('Enter a valid phone number','error'); return; }
   try {
-    const r = await fetch('/api/dnd', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({phone, addedBy: agentId}) });
+    const r = await fetch('/api/admin/dnd', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({phone, addedBy: agentId}) });
     const d = await r.json();
     if (d.error) { showToast(d.error,'error'); return; }
     input.value = ''; showToast('Added to DND','success'); loadDndNumbers();
@@ -2098,7 +2098,7 @@ async function addDndManually() {
 async function removeDndNumber(phone) {
   if (!confirm('Remove ' + phone + ' from DND?')) return;
   try {
-    const r = await fetch('/api/dnd/' + encodeURIComponent(phone), {method:'DELETE'});
+    const r = await fetch('/api/admin/dnd/' + encodeURIComponent(phone), {method:'DELETE'});
     const d = await r.json();
     if (d.error) { showToast(d.error,'error'); return; }
     showToast('Removed from DND','success'); loadDndNumbers();
