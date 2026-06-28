@@ -855,6 +855,7 @@
             <div class="lead-name" id="leadName"></div>
             <div class="phone-number" id="phoneDisplay">—</div>
             <div class="number-hint">Dial this number now</div>
+            <button onclick="removeCurrentLead()" style="margin-top:10px;padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #ef4444;background:rgba(239,68,68,.08);color:#ef4444;font-family:inherit">🗑 Remove Lead</button>
           </div>
         </div>
 
@@ -913,6 +914,7 @@
           <button class="action-btn" id="btnEndWashroom" onclick="endWashroom()"  style="background:#6366f1;color:#fff;display:none;">▶ Done — Resume Dialing</button>
           <button class="action-btn" id="btnMeeting"     onclick="takeMeeting()"  style="background:#cffafe;color:#0891b2;border:1.5px solid #67e8f9;display:none;">📋 Meeting</button>
           <button class="action-btn" id="btnEndMeeting"  onclick="endMeeting()"   style="background:#0891b2;color:#fff;display:none;">▶ Meeting Done — Resume</button>
+          <button class="action-btn" onclick="openAddLeadModal()" style="background:#f0fdf4;color:#16a34a;border:1.5px solid #bbf7d0">➕ Add Lead to Dialer</button>
         </div>
       </div>
 
@@ -1395,29 +1397,14 @@
     </div>
   </div>
 
-  <div class="grid-2">
-    <!-- Upload Panel -->
-    <div class="panel">
-      <div class="panel-header">
-        <h2>Upload Numbers</h2>
-        <span style="font-size:12px;color:var(--muted)">Excel / CSV</span>
-      </div>
-      <div class="panel-body">
-        <div class="upload-zone" id="dropZone">
-          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
-          <div class="upload-icon">&#128194;</div>
-          <p><strong>Click or drag</strong> your file here</p>
-          <p style="margin-top:6px;font-size:12px">Column A = Phone Numbers</p>
-        </div>
-        <div id="uploadStatus" style="margin-top:12px;font-size:13px;color:var(--muted);display:none"></div>
-        <div style="margin-top:20px">
-          <div class="panel-header" style="padding:0 0 12px 0;border-bottom:1px solid var(--border)">
-            <h2>Uploaded Files</h2>
-          </div>
-          <div class="file-list" id="fileList" style="margin-top:12px">
-            <div class="empty">No files uploaded yet</div>
-          </div>
-        </div>
+  <div class="panel" style="margin-bottom:20px">
+    <div class="panel-header">
+      <h2>Number Files</h2>
+      <span style="font-size:12px;color:var(--muted)">View &amp; manage uploaded batches</span>
+    </div>
+    <div class="panel-body">
+      <div class="file-list" id="fileList">
+        <div class="empty">No files uploaded yet</div>
       </div>
     </div>
   </div>
@@ -1613,6 +1600,24 @@
     </div>
   </div>
 </div>
+</div>
+
+<!-- ── ADD LEAD MODAL ── -->
+<div class="modal-overlay" id="addLeadModal">
+  <div class="modal-box">
+    <h3>➕ Add Lead to Dialer</h3>
+    <p class="modal-sub">Manually add a number to the calling pool</p>
+    <div class="field">
+      <label>Phone Number <span style="color:#ef4444">*</span></label>
+      <input type="text" id="addLeadPhone" placeholder="10-digit number" maxlength="10" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="addLeadName" placeholder="e.g. Amit Kumar" autocomplete="off">
+    </div>
+    <button class="btn-confirm blue" onclick="confirmAddLead()">➕ Add to Dialer</button>
+    <button class="btn-cancel-modal" onclick="closeAddLeadModal()">Cancel</button>
+  </div>
 </div>
 
 <div id="globalToast"></div>
@@ -2717,6 +2722,44 @@ async function addInterestedManually() {
     showToast('Lead added successfully', 'success');
     refreshLeadSections();
   } catch (e) { alert('Failed to add lead'); }
+}
+
+// ── Add Lead to Dialer (manual number) ────────────────────────────────────────
+function openAddLeadModal() {
+  document.getElementById('addLeadPhone').value = '';
+  document.getElementById('addLeadName').value  = '';
+  document.getElementById('addLeadModal').classList.add('active');
+}
+function closeAddLeadModal() { document.getElementById('addLeadModal').classList.remove('active'); }
+
+async function confirmAddLead() {
+  const phone = document.getElementById('addLeadPhone').value.trim();
+  const name  = document.getElementById('addLeadName').value.trim();
+  if (!phone || !/^\d{10}$/.test(phone)) { alert('Please enter a valid 10-digit phone number'); return; }
+  try {
+    const r = await fetch('/api/agent/add-manual-number', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentId, phone, name })
+    });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+    closeAddLeadModal();
+    showToast('Lead added to dialer ✅', 'success');
+  } catch (e) { alert('Failed to add lead'); }
+}
+
+async function removeCurrentLead() {
+  if (!currentNumberId) return;
+  if (!confirm('Remove this lead from the dialer pool?')) return;
+  try {
+    const r = await fetch('/api/agent/number/' + currentNumberId, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+    currentNumberId = null;
+    document.getElementById('numberDisplay').style.display = 'none';
+    showToast('Lead removed', 'success');
+    startDialing();
+  } catch (e) { alert('Failed to remove lead'); }
 }
 
 // ── My Stats ──────────────────────────────────────────────────────────────────
