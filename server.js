@@ -1716,7 +1716,7 @@ app.get('/api/rankings', (req, res) => {
     else if (entry.disposition === 'switch_off') agentScores[aid].switchOff++;
   });
 
-  // New formula: MAX(0, MIN(100, (((100*Interested) + (25*FollowUp) - (10*NotInterested) - (15*Discard) - (2*CNC) - (2*SwitchOff)) / (TotalCalls*100)) * 100))
+  // New formula: MAX(0, MIN(100, (((100*Interested) + (25*FollowUp) - (10*NotInterested) - (15*NotEligible/discard) - (2*CNC) - (2*SwitchOff)) / (TotalCalls*100)) * 100))
   const rankings = Object.values(agentScores).map(a => {
     let score = 0;
     if (a.totalCalls > 0) {
@@ -1753,7 +1753,7 @@ app.get('/api/rankings', (req, res) => {
     }
   });
 
-  const formulaDescription = 'Score (0-100) = ((100 x Interested) + (25 x FollowUp) - (10 x NotInterested) - (15 x Discard) - (2 x CNC) - (2 x SwitchOff)) / (TotalCalls x 100) x 100. Higher interested and followup calls improve your score. Not Interested, Discard, CNC and SwitchOff reduce it.';
+  const formulaDescription = 'Score (0-100) = ((100 x Interested) + (25 x FollowUp) - (10 x NotInterested) - (15 x Not-Eligible) - (2 x CNC) - (2 x SwitchOff)) / (TotalCalls x 100) x 100. Higher interested and followup calls improve your score. Not Interested, Not-Eligible, CNC and SwitchOff reduce it.';
 
   res.json({ rankings, formulaDescription });
 });

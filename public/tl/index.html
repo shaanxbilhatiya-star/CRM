@@ -895,7 +895,7 @@
             <button class="dispo-btn dispo-not-interested" onclick="submitDisposition('not_interested')">🚫 Not Interested</button>
             <button class="dispo-btn dispo-followup"      onclick="submitDisposition('followup')">📅 Followup</button>
             <button class="dispo-btn dispo-switch-off"    onclick="submitDisposition('switch_off')">📴 Switch OFF</button>
-            <button class="dispo-btn dispo-discard"       onclick="submitDisposition('discard')">🚫 Discard/Not-Eligible</button>
+            <button class="dispo-btn dispo-discard"       onclick="submitDisposition('discard')">🚫 Not-Eligible</button>
             <button class="dispo-btn dispo-discard" style="background:#fce4ec;color:#c62828;border:1.5px solid #ef9a9a" onclick="submitDisposition('dnd')">🔕 DND</button>
             <button class="dispo-btn dispo-interested"    onclick="submitDisposition('interested')">⭐ Interested</button>
           </div>
@@ -962,7 +962,7 @@
             <div class="dispo-stat-card">
               <div class="dispo-stat-indicator" style="background:#475569"></div>
               <div class="dispo-stat-val" id="myStatsDiscard">0</div>
-              <div class="dispo-stat-lbl">Discard</div>
+              <div class="dispo-stat-lbl">Not-Eligible</div>
             </div>
           </div>
         </div>
@@ -1303,7 +1303,7 @@
         <div class="dispo-stat-card">
           <div class="dispo-stat-indicator" style="background:#78350f"></div>
           <div class="dispo-stat-val" id="adminStatsDiscard">0</div>
-          <div class="dispo-stat-lbl">Discard/Not-Eligible</div>
+          <div class="dispo-stat-lbl">Not-Eligible</div>
         </div>
         <div class="dispo-stat-card">
           <div class="dispo-stat-indicator" style="background:var(--green)"></div>
@@ -2757,7 +2757,7 @@ function renderLeaderboard(data, formulaDesc) {
   if (formulaDesc) {
     html += '<div style="background:var(--accent-glow);border:1px solid rgba(108,43,217,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--text);line-height:1.6">';
     html += '<strong style="color:var(--accent)">&#128202; Scoring Formula:</strong> ';
-    html += 'Score = (100 x Interested + 25 x FollowUp - 10 x NI - 15 x Discard - 2 x CNC - 2 x SwitchOff) / TotalCalls (0-100 scale)';
+    html += 'Score = (100 x Interested + 25 x FollowUp - 10 x NI - 15 x Not-Eligible - 2 x CNC - 2 x SwitchOff) / TotalCalls (0-100 scale)';
     html += '</div>';
   }
   html += '<div class="lb-list">';
@@ -4181,7 +4181,7 @@ function renderTlDailyCopyPanel(data) {
     followup: '&#128197; Followup',
     switch_off: '&#128244; Switch OFF',
     interested: '&#11088; Interested',
-    discard: '&#128683; Discard',
+    discard: '&#128683; Not-Eligible',
     dnd: '&#128277; DND'
   };
   
