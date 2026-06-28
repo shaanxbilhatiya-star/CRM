@@ -81,3 +81,31 @@ Numbers are re-available the next day (unless deleted).
 
 ## Port Change
 Edit `server.js` line: `const PORT = 3000;`
+
+---
+
+## 💾 Your Data is Safe When You Update
+
+All numbers, agents, leads, DND list, and EIDs are stored **outside the project folder** —
+by default in a hidden folder in your OS user profile:
+- **Windows**: `C:\Users\<you>\.autolead-crm`
+- **Mac/Linux**: `~/.autolead-crm`
+
+This means you can safely `git pull`, re-download the ZIP, or delete and re-clone this
+repo to update the code — your data folder lives elsewhere and is never touched.
+
+If you're upgrading from an older copy of this project that *did* store data inside the
+project folder, the server automatically migrates it into the new location the first
+time you start it — just check the startup log, it'll say `📦 Migrated existing...`.
+
+**Daily backups**: a dated snapshot of `state.json` is also kept automatically in
+`.autolead-crm/backups/` (last 14 days), as a safety net against an accidental
+"Clear All" / "Hard Reset" or a corrupted file.
+
+**Custom location**: set the `AUTOLEAD_DATA_DIR` environment variable before starting
+the server if you'd rather store data somewhere specific (e.g. a backed-up drive, or a
+mounted volume if you ever move this to a cloud host):
+```
+AUTOLEAD_DATA_DIR=/path/to/your/storage node server.js
+```
+

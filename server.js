@@ -12,23 +12,84 @@ const XLSX = require('xlsx');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
 const PORT = 3000;
-const DATA_FILE = path.join(__dirname, 'data', 'state.json');
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
-const LEAD_DOCS_DIR = path.join(__dirname, 'uploads', 'lead_docs');
-const AGENT_PHOTOS_DIR = path.join(__dirname, 'uploads', 'agent_photos');
-const SCRIPTS_DIR = path.join(__dirname, 'uploads', 'scripts');
+
+function ensureDir(d) { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); }
+
+// ─── Persistent Data Location ─────────────────────────────────────────────────
+// CRITICAL: data/ and uploads/ live OUTSIDE the project folder by default.
+// Reason: re-cloning, re-downloading, or extracting a fresh copy of this repo to
+// "update" the app replaces the whole project folder. Anything stored inside it
+// (old default: data/state.json, uploads/) gets wiped along with the old code.
+// Storing it under the OS user's home folder means updating the code never touches it.
+// Override with the AUTOLEAD_DATA_DIR environment variable (e.g. to point at a
+// mounted persistent volume on a cloud host) if you don't want the home-folder default.
+let DATA_ROOT = process.env.AUTOLEAD_DATA_DIR || path.join(os.homedir(), '.autolead-crm');
+try {
+  ensureDir(DATA_ROOT);
+} catch (e) {
+  console.error('\u26A0\uFE0F  Could not use external data folder "' + DATA_ROOT + '" (' + e.message + '). ' +
+    'Falling back to storing data inside the project folder — your data WILL be lost next time you ' +
+    'update by re-cloning/re-downloading this project. Set AUTOLEAD_DATA_DIR to a writable folder to fix this.');
+  DATA_ROOT = __dirname;
+}
+
+const DATA_FILE       = path.join(DATA_ROOT, 'data', 'state.json');
+const UPLOADS_DIR      = path.join(DATA_ROOT, 'uploads');
+const LEAD_DOCS_DIR    = path.join(UPLOADS_DIR, 'lead_docs');
+const AGENT_PHOTOS_DIR = path.join(UPLOADS_DIR, 'agent_photos');
+const SCRIPTS_DIR      = path.join(UPLOADS_DIR, 'scripts');
+const BACKUPS_DIR      = path.join(DATA_ROOT, 'backups');
 
 // Ensure directories exist
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-if (!fs.existsSync(LEAD_DOCS_DIR)) fs.mkdirSync(LEAD_DOCS_DIR, { recursive: true });
-if (!fs.existsSync(AGENT_PHOTOS_DIR)) fs.mkdirSync(AGENT_PHOTOS_DIR, { recursive: true });
-if (!fs.existsSync(SCRIPTS_DIR)) fs.mkdirSync(SCRIPTS_DIR, { recursive: true });
+[path.dirname(DATA_FILE), UPLOADS_DIR, LEAD_DOCS_DIR, AGENT_PHOTOS_DIR, SCRIPTS_DIR, BACKUPS_DIR].forEach(ensureDir);
+
+function copyRecursiveSync(src, dest) {
+  const stat = fs.statSync(src);
+  if (stat.isDirectory()) {
+    ensureDir(dest);
+    // Merge: recurse into every item so pre-created (but empty) destination
+    // subfolders like uploads/agent_photos don't cause their contents to be skipped.
+    for (const item of fs.readdirSync(src)) copyRecursiveSync(path.join(src, item), path.join(dest, item));
+  } else if (!fs.existsSync(dest)) {
+    fs.copyFileSync(src, dest);
+  }
+}
+
+// ─── One-time migration from the OLD in-project data/uploads folders ──────────
+// Older runs of this app (or your very first run on this machine) may have data
+// sitting inside the project folder. Pull it into the new external location once,
+// so you don't lose anything on this transition. Safe to run on every boot —
+// it only ever copies files that aren't already present at the destination.
+if (DATA_ROOT !== __dirname) {
+  try {
+    const legacyDataFile = path.join(__dirname, 'data', 'state.json');
+    if (!fs.existsSync(DATA_FILE) && fs.existsSync(legacyDataFile)) {
+      fs.copyFileSync(legacyDataFile, DATA_FILE);
+      console.log('\uD83D\uDCE6 Migrated existing state.json -> ' + DATA_FILE);
+    }
+  } catch (e) { console.error('Legacy state.json migration skipped:', e.message); }
+
+  try {
+    const legacyUploads = path.join(__dirname, 'uploads');
+    if (fs.existsSync(legacyUploads)) {
+      for (const item of fs.readdirSync(legacyUploads)) {
+        if (item === '.gitkeep') continue;
+        copyRecursiveSync(path.join(legacyUploads, item), path.join(UPLOADS_DIR, item));
+      }
+      console.log('\uD83D\uDCE6 Checked uploads/ for anything to migrate -> ' + UPLOADS_DIR);
+    }
+  } catch (e) { console.error('Legacy uploads migration skipped:', e.message); }
+}
+
+console.log('\uD83D\uDCBE Data storage location: ' + DATA_ROOT);
+console.log('   (Outside the project folder — updating/re-cloning the code will never touch this.)');
 
 const BREAK_DURATION_MS = 60 * 60 * 1000; // 1 hour
 const DOC_DEADLINE_MS = 72 * 60 * 60 * 1000; // 72 hours (changed from 48)
@@ -75,6 +136,24 @@ function saveState(state) {
   fs.renameSync(tmp, DATA_FILE);
 }
 
+// Extra safety net on top of the external storage location: keep one dated
+// snapshot of state.json per day (last 14 days) in BACKUPS_DIR. Cheap insurance
+// against an accidental Clear All / Hard Reset, a corrupted write, or anything else.
+function backupStateFile() {
+  try {
+    if (!fs.existsSync(DATA_FILE)) return;
+    const todaysBackup = path.join(BACKUPS_DIR, 'state-' + getTodayStr() + '.json');
+    if (!fs.existsSync(todaysBackup)) {
+      fs.copyFileSync(DATA_FILE, todaysBackup);
+    }
+    const cutoffMs = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    fs.readdirSync(BACKUPS_DIR).forEach(f => {
+      const full = path.join(BACKUPS_DIR, f);
+      try { if (fs.statSync(full).mtimeMs < cutoffMs) fs.unlinkSync(full); } catch {}
+    });
+  } catch (e) { console.error('State backup skipped:', e.message); }
+}
+
 function loadStateWithFallback() {
   // Try main file first, then .tmp backup if main is corrupt/missing
   for (const f of [DATA_FILE, DATA_FILE + '.tmp']) {
@@ -88,6 +167,7 @@ function loadStateWithFallback() {
 function checkDailyReset(state) {
   const today = getTodayStr();
   if (state.lastReset !== today) {
+    backupStateFile(); // snapshot yesterday's final state before today's reset mutates it
     for (const id in state.agents) {
       state.agents[id].totalDialedToday = 0;
       state.agents[id].date = today;
@@ -152,6 +232,7 @@ for (const id in appState.agents) {
   a.active = false;
 }
 saveState(appState);
+backupStateFile(); // guarantee at least one snapshot exists per boot, even same-day restarts
 
 setInterval(() => {
   try { saveState(appState); } catch {}
