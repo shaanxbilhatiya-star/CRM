@@ -63,15 +63,19 @@ if (looksLikeContainerHost && !process.env.AUTOLEAD_DATA_DIR) {
   );
 }
 
-const DATA_FILE       = path.join(DATA_ROOT, 'data', 'state.json');
-const UPLOADS_DIR      = path.join(DATA_ROOT, 'uploads');
-const LEAD_DOCS_DIR    = path.join(UPLOADS_DIR, 'lead_docs');
-const AGENT_PHOTOS_DIR = path.join(UPLOADS_DIR, 'agent_photos');
-const SCRIPTS_DIR      = path.join(UPLOADS_DIR, 'scripts');
-const BACKUPS_DIR      = path.join(DATA_ROOT, 'backups');
+const DATA_FILE         = path.join(DATA_ROOT, 'data', 'state.json');
+const UPLOADS_DIR        = path.join(DATA_ROOT, 'uploads');
+const LEAD_DOCS_DIR      = path.join(UPLOADS_DIR, 'lead_docs');
+const AGENT_PHOTOS_DIR   = path.join(UPLOADS_DIR, 'agent_photos');
+const SCRIPTS_DIR        = path.join(UPLOADS_DIR, 'scripts');
+const BACKUPS_DIR        = path.join(DATA_ROOT, 'backups');
+// Original numbers-sheet uploads (.xlsx/.csv etc.) are kept here forever, exactly
+// as uploaded — they used to be parsed then deleted; now they're retained so the
+// admin can always pull back the exact original file later.
+const NUMBER_SHEETS_DIR  = path.join(UPLOADS_DIR, 'number_sheets');
 
 // Ensure directories exist
-[path.dirname(DATA_FILE), UPLOADS_DIR, LEAD_DOCS_DIR, AGENT_PHOTOS_DIR, SCRIPTS_DIR, BACKUPS_DIR].forEach(ensureDir);
+[path.dirname(DATA_FILE), UPLOADS_DIR, LEAD_DOCS_DIR, AGENT_PHOTOS_DIR, SCRIPTS_DIR, BACKUPS_DIR, NUMBER_SHEETS_DIR].forEach(ensureDir);
 
 function copyRecursiveSync(src, dest) {
   const stat = fs.statSync(src);
@@ -658,12 +662,14 @@ function getAdminStats() {
   });
 
   const fileStats = appState.uploadedFiles.map(f => {
+    const { sheetPath, ...publicFields } = f;
     const fileNums = appState.numbers.filter(n => n.file === f.id);
     return {
-      ...f,
+      ...publicFields,
       total: fileNums.length,
       dialed: fileNums.filter(n => n.dialedBy).length,
-      remaining: fileNums.filter(n => !n.dialedBy).length
+      remaining: fileNums.filter(n => !n.dialedBy).length,
+      hasOriginal: !!(sheetPath && fs.existsSync(sheetPath))
     };
   });
 
@@ -684,8 +690,16 @@ function getAdminStats() {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Multer for number file uploads
-const numberUpload = multer({ dest: UPLOADS_DIR });
+// Multer for number file uploads — keep the ORIGINAL file permanently (no longer
+// deleted after parsing) so the admin can retrieve the exact sheet they uploaded.
+const numberSheetStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, NUMBER_SHEETS_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.xlsx';
+    cb(null, uuidv4() + ext);
+  }
+});
+const numberUpload = multer({ storage: numberSheetStorage });
 
 // Multer for lead document ZIP uploads — store with original name under lead_docs
 const docStorage = multer.diskStorage({
@@ -747,9 +761,8 @@ app.post('/api/admin/upload', numberUpload.single('file'), (req, res) => {
       phones.push({ id: uuidv4(), phone, name, file: fileId, assignedTo: null, dialedBy: null, dialedAt: null });
     });
     appState.numbers.push(...phones);
-    appState.uploadedFiles.push({ id: fileId, name: req.file.originalname, uploadedAt: new Date().toISOString(), total: phones.length });
+    appState.uploadedFiles.push({ id: fileId, name: req.file.originalname, uploadedAt: new Date().toISOString(), total: phones.length, sheetPath: req.file.path });
     saveState(appState);
-    fs.unlinkSync(req.file.path);
     broadcastAdminStats();
     res.json({ success: true, count: phones.length, skipped, fileId });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1220,6 +1233,10 @@ app.delete('/api/admin/file/:fileId', (req, res) => {
   // SAFE DELETE: never remove interested leads when deleting a file batch —
   // they are real business data (pending docs or docs already uploaded).
   // Only wipe undisposed / non-converting numbers from that batch.
+  const fileInfo = appState.uploadedFiles.find(f => f.id === fid);
+  if (fileInfo && fileInfo.sheetPath) {
+    try { fs.unlinkSync(fileInfo.sheetPath); } catch {}
+  }
   const protectedCount = appState.numbers.filter(
     n => n.file === fid && n.disposition === 'interested'
   ).length;
@@ -1263,6 +1280,9 @@ app.post('/api/admin/reset-today', (req, res) => {
 app.post('/api/admin/clear-all', (req, res) => {
   // SAFE CLEAR: keep all interested leads (pending + documented) — they are permanent business data.
   // Only wipe undisposed numbers, file registry, and dialed log.
+  (appState.uploadedFiles || []).forEach(f => {
+    if (f.sheetPath) { try { fs.unlinkSync(f.sheetPath); } catch {} }
+  });
   appState.numbers = appState.numbers.filter(n => n.disposition === 'interested');
   appState.uploadedFiles = [];
   appState.dialedLog = [];
@@ -1293,6 +1313,9 @@ app.post('/api/admin/hard-reset', (req, res) => {
   // Agent photos are also preserved (they belong to allowedEids, not to a session).
   const savedEids = appState.allowedEids || {};
   const savedInterested = appState.numbers.filter(n => n.disposition === 'interested');
+  (appState.uploadedFiles || []).forEach(f => {
+    if (f.sheetPath) { try { fs.unlinkSync(f.sheetPath); } catch {} }
+  });
   appState = createFreshState(savedEids);
   appState.numbers = savedInterested; // restore interested leads
   // Only delete lead doc ZIPs for leads that no longer exist (orphaned files)
@@ -2279,6 +2302,18 @@ app.get('/api/admin/download-numbers/:fileId', (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename=' + encodeURIComponent(downloadName));
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.send(buf);
+});
+
+// ─── Admin: Download the ORIGINAL uploaded sheet exactly as it was uploaded ────
+// (Distinct from /download-numbers above, which regenerates a status export —
+// this returns the literal file the admin uploaded, untouched.)
+app.get('/api/admin/original-file/:fileId', (req, res) => {
+  const fid = req.params.fileId;
+  const fileInfo = appState.uploadedFiles.find(f => f.id === fid);
+  if (!fileInfo || !fileInfo.sheetPath || !fs.existsSync(fileInfo.sheetPath)) {
+    return res.status(404).json({ error: 'Original file is not available for this upload (uploaded before this feature, or already removed).' });
+  }
+  res.download(fileInfo.sheetPath, fileInfo.name);
 });
 
 // ─── Page Routes ──────────────────────────────────────────────────────────────
