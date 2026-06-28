@@ -109,3 +109,26 @@ mounted volume if you ever move this to a cloud host):
 AUTOLEAD_DATA_DIR=/path/to/your/storage node server.js
 ```
 
+---
+
+## ☁️ Deploying on Railway (or Render/Heroku/Fly)
+
+**Important:** on a container host, the filesystem itself is thrown away on every
+deploy and every restart — including the "outside the project folder" home directory
+this app uses by default. That trick only protects you on a real machine (your PC, a
+LAN server, a VPS) where the disk actually sticks around. On Railway it does not,
+unless you attach a **Volume**.
+
+1. In your Railway project, select this service → **Volumes** tab (or ⌘K → "New Volume") → attach a volume to the service.
+2. Set its **mount path** to `/data`.
+3. Go to the service's **Variables** tab and add:
+   ```
+   AUTOLEAD_DATA_DIR=/data
+   ```
+4. Redeploy.
+
+That's it — the app already migrates any old in-project data into `AUTOLEAD_DATA_DIR`
+automatically on first boot, so nothing else needs to change. If you ever forget this
+step, the server will now print a loud `🚨 DATA LOSS RISK` warning in the deploy logs
+instead of failing silently.
+

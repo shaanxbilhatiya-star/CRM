@@ -40,6 +40,29 @@ try {
   DATA_ROOT = __dirname;
 }
 
+// ─── Container/PaaS persistence sanity check ──────────────────────────────────
+// "Outside the project folder" only survives an UPDATE if the home folder itself
+// survives between deploys. On a real machine (LAN PC, VPS) it does. On a
+// container host (Railway, Render, Heroku, Fly, etc.) it does NOT — every
+// deploy/restart can hand the container a brand-new, empty filesystem,
+// home folder included. AUTOLEAD_DATA_DIR must then point at a real
+// persistent volume mount, or every redeploy wipes the data again.
+const looksLikeContainerHost = !!(
+  process.env.RAILWAY_PROJECT_ID || process.env.RAILWAY_SERVICE_ID ||
+  process.env.RAILWAY_ENVIRONMENT_ID || process.env.RENDER ||
+  process.env.DYNO /* Heroku */ || process.env.FLY_APP_NAME
+);
+if (looksLikeContainerHost && !process.env.AUTOLEAD_DATA_DIR) {
+  console.error(
+    '\n\uD83D\uDEA8 DATA LOSS RISK: this looks like a container host (Railway/Render/Heroku/Fly), ' +
+    'and AUTOLEAD_DATA_DIR is NOT set.\n' +
+    '   Right now data is sitting at "' + DATA_ROOT + '" inside the container\'s own filesystem — ' +
+    'that is NOT a persistent volume and WILL be wiped on the next deploy or restart.\n' +
+    '   Fix: attach a persistent Volume to this service, mount it at e.g. /data, then set the ' +
+    'environment variable AUTOLEAD_DATA_DIR=/data and redeploy. See README.md → "Deploying on Railway".\n'
+  );
+}
+
 const DATA_FILE       = path.join(DATA_ROOT, 'data', 'state.json');
 const UPLOADS_DIR      = path.join(DATA_ROOT, 'uploads');
 const LEAD_DOCS_DIR    = path.join(UPLOADS_DIR, 'lead_docs');
